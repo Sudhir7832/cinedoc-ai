@@ -1,0 +1,38 @@
+# CineDoc AI
+
+> CineDoc AI is an AI-assisted video production studio for cinematic documentaries and Kids & Family stories.
+
+## Public pages
+
+- Home and production studio: /
+- About the platform: /about
+- Frequently asked questions: /faq
+- Terms and Conditions: /terms
+- Privacy Policy: /privacy
+
+## Core capabilities
+
+- Generate scene-based scripts from a topic or custom narration.
+- Choose cinematic documentary or Kids & Family formats: educational, entertainment, adventure, and bedtime.
+- Generate audience-aware visuals and independent documentary/kids narration profiles.
+- Select whether synchronized subtitles are burned into the final video.
+- Review scenes, replace images, edit narration, adjust timing, and rerender.
+- Credits are reserved during processing and deducted after a validated successful render.
+
+## Supported narration providers
+
+- Microsoft Neural voices
+- Sarvam AI Bulbul voices
+- OpenRouter speech models
+- Cloudflare speech providers
+
+## Showcase formats
+
+- Landscape 16:9
+- Instagram Reels 9:16
+- TikTok 9:16
+
+## Access notes
+
+- Public documentation pages may be indexed.
+- Admin, authentication, generated user media, and API routes are private or operational surfaces.

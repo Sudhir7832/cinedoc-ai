@@ -1,0 +1,43 @@
+{
+  "welcomeCredits": 10,
+  "creditsPerScene": 1,
+  "enableTestMode": true,
+  "enableStripe": true,
+  "enableRazorpay": true,
+  "stripePublishableKey": "",
+  "stripeSecretKey": "",
+  "razorpayKeyId": "",
+  "razorpayKeySecret": "",
+  "pricingPacks": [
+    {
+      "id": "pack_creator",
+      "name": "Creator",
+      "credits": 150,
+      "priceUsd": 11,
+      "priceInr": 999,
+      "videoMinutes": 15,
+      "description": "For creators producing polished shorts and regular documentary episodes.",
+      "popular": false
+    },
+    {
+      "id": "pack_pro",
+      "name": "Creator Pro",
+      "credits": 400,
+      "priceUsd": 24,
+      "priceInr": 2199,
+      "videoMinutes": 40,
+      "description": "More production time for growing channels, campaigns, and client work.",
+      "popular": true
+    },
+    {
+      "id": "pack_studio",
+      "name": "Studio",
+      "credits": 1000,
+      "priceUsd": 49,
+      "priceInr": 4499,
+      "videoMinutes": 100,
+      "description": "High-volume production capacity for teams and documentary studios.",
+      "popular": false
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Puter Test</title>
+  <script src="https://js.puter.com/v2/"></script>
+</head>
+<body style="background: #111; color: white; font-family: sans-serif; padding: 20px;">
+  <h2>Testing Puter.js AI Image Generation</h2>
+  <button id="btn" style="padding: 10px 20px; font-size: 16px; cursor: pointer;">Generate Test Image</button>
+  <div id="status" style="margin-top: 20px;">Click button to test...</div>
+  <div id="result" style="margin-top: 20px;"></div>
+
+  <script>
+    document.getElementById('btn').onclick = async () => {
+      const status = document.getElementById('status');
+      status.innerText = 'Calling puter.ai.txt2img...';
+      try {
+        console.log('puter:', window.puter);
+        const img = await puter.ai.txt2img("A serene cinematic mountain landscape at sunset, 8k, photorealistic");
+        status.innerText = 'Success! Image generated:';
+        document.getElementById('result').appendChild(img);
+      } catch (err) {
+        status.innerText = 'Error: ' + (err.message || JSON.stringify(err));
+        console.error(err);
+      }
+    };
+  </script>
+</body>
+</html>

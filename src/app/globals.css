@@ -1,0 +1,346 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light;
+  --app-bg: #f5f6f8;
+  --app-surface: #ffffff;
+  --app-surface-soft: #eef0f4;
+  --app-surface-raised: #ffffff;
+  --app-input: #fafafa;
+  --app-text: #18181b;
+  --app-text-muted: #5f6673;
+  --app-border: #dfe2e8;
+  --app-brand: #ed5b32;
+  --app-brand-hover: #d94a23;
+  --app-brand-soft: #fff0ea;
+  --app-accent: #6558e8;
+  --app-success: #0f9369;
+  --app-danger: #dc354d;
+  --app-shadow-sm: 0 1px 2px rgb(24 24 27 / 0.06), 0 1px 8px rgb(24 24 27 / 0.04);
+  --app-shadow-md: 0 18px 50px rgb(24 24 27 / 0.09);
+  --app-shadow-xl: 0 32px 90px rgb(24 24 27 / 0.16);
+}
+
+.dark {
+  color-scheme: dark;
+  --app-bg: #090a0e;
+  --app-surface: #111218;
+  --app-surface-soft: #181a23;
+  --app-surface-raised: #1d1f29;
+  --app-input: #0d0e13;
+  --app-text: #f7f7f8;
+  --app-text-muted: #a3a8b4;
+  --app-border: #2a2d37;
+  --app-brand: #ff7450;
+  --app-brand-hover: #ff8b6d;
+  --app-brand-soft: rgb(255 116 80 / 0.12);
+  --app-accent: #9387ff;
+  --app-success: #49c996;
+  --app-danger: #ff7182;
+  --app-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.28);
+  --app-shadow-md: 0 20px 60px rgb(0 0 0 / 0.32);
+  --app-shadow-xl: 0 36px 110px rgb(0 0 0 / 0.52);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--app-bg);
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  overflow-x: hidden;
+  background:
+    radial-gradient(circle at 8% -10%, rgb(237 91 50 / 0.08), transparent 30rem),
+    radial-gradient(circle at 92% 0%, rgb(101 88 232 / 0.07), transparent 26rem),
+    var(--app-bg);
+  color: var(--app-text);
+  font-family: var(--font-inter), Inter, ui-sans-serif, system-ui, sans-serif;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+button,
+a,
+[role="button"] {
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--app-brand) 55%, transparent);
+  outline-offset: 3px;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--app-brand) 28%, transparent);
+  color: var(--app-text);
+}
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--app-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--app-text-muted) 45%, transparent);
+  border: 2px solid var(--app-bg);
+  border-radius: 999px;
+}
+
+.app-shell {
+  background: transparent;
+  color: var(--app-text);
+}
+
+.app-header {
+  background: color-mix(in srgb, var(--app-surface) 88%, transparent);
+  border-bottom: 1px solid var(--app-border);
+  backdrop-filter: blur(18px) saturate(140%);
+}
+
+.surface-card {
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  box-shadow: var(--app-shadow-sm);
+}
+
+.surface-soft {
+  background: var(--app-surface-soft);
+  border: 1px solid var(--app-border);
+}
+
+.surface-raised {
+  background: var(--app-surface-raised);
+  border: 1px solid var(--app-border);
+  box-shadow: var(--app-shadow-md);
+}
+
+.text-primary {
+  color: var(--app-text);
+}
+
+.text-secondary {
+  color: var(--app-text-muted);
+}
+
+.border-theme {
+  border-color: var(--app-border);
+}
+
+.brand-text {
+  color: var(--app-brand);
+}
+
+.brand-soft {
+  background: var(--app-brand-soft);
+  color: var(--app-brand);
+}
+
+.btn-primary {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.8rem;
+  background: var(--app-brand);
+  color: #ffffff;
+  padding: 0.7rem 1.1rem;
+  font-weight: 700;
+  box-shadow: 0 10px 28px rgb(237 91 50 / 0.22);
+  transition: background-color 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+}
+
+.btn-primary:hover {
+  background: var(--app-brand-hover);
+  box-shadow: 0 14px 34px rgb(237 91 50 / 0.29);
+}
+
+.btn-secondary {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1px solid var(--app-border);
+  border-radius: 0.8rem;
+  background: var(--app-surface);
+  color: var(--app-text);
+  padding: 0.7rem 1rem;
+  font-weight: 650;
+  box-shadow: var(--app-shadow-sm);
+  transition: background-color 180ms ease, border-color 180ms ease;
+}
+
+.btn-secondary:hover,
+.icon-button:hover {
+  background: var(--app-surface-soft);
+  border-color: color-mix(in srgb, var(--app-border) 65%, var(--app-text-muted));
+}
+
+.icon-button {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--app-border);
+  border-radius: 0.8rem;
+  background: var(--app-surface);
+  color: var(--app-text-muted);
+  transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease;
+}
+
+.app-field {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--app-border);
+  border-radius: 0.8rem;
+  background: var(--app-input);
+  color: var(--app-text);
+  padding: 0.7rem 0.9rem;
+  transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
+.app-field::placeholder {
+  color: color-mix(in srgb, var(--app-text-muted) 78%, transparent);
+}
+
+.app-field:focus {
+  border-color: var(--app-brand);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--app-brand) 15%, transparent);
+  outline: none;
+}
+
+.eyebrow {
+  color: var(--app-brand);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.modal-scrim {
+  isolation: isolate;
+  overscroll-behavior: contain;
+  background: color-mix(in srgb, var(--app-bg) 94%, transparent);
+  backdrop-filter: blur(14px) saturate(90%);
+}
+
+.modal-panel {
+  position: relative;
+  z-index: 1;
+  background: var(--app-surface-raised);
+  border: 1px solid var(--app-border);
+  color: var(--app-text);
+  box-shadow: var(--app-shadow-xl);
+}
+
+.hairline {
+  height: 1px;
+  background: var(--app-border);
+}
+
+/* Compatibility layer for existing screens while components migrate to semantic tokens. */
+html:not(.dark) .bg-gray-950,
+html:not(.dark) .bg-gray-900,
+html:not(.dark) .bg-\[\#08090d\],
+html:not(.dark) .bg-\[\#0b0d17\],
+html:not(.dark) .bg-\[\#0a0c14\] {
+  background-color: var(--app-surface) !important;
+}
+
+html:not(.dark) .bg-gray-800,
+html:not(.dark) .bg-gray-950\/60,
+html:not(.dark) .bg-gray-950\/70,
+html:not(.dark) .bg-gray-950\/80,
+html:not(.dark) .bg-gray-950\/90,
+html:not(.dark) .bg-gray-900\/40,
+html:not(.dark) .bg-gray-900\/80,
+html:not(.dark) .bg-gray-900\/90 {
+  background-color: var(--app-surface-soft) !important;
+}
+
+html:not(.dark) .text-white,
+html:not(.dark) .text-gray-100,
+html:not(.dark) .text-gray-200 {
+  color: var(--app-text) !important;
+}
+
+html:not(.dark) .text-gray-300,
+html:not(.dark) .text-gray-400,
+html:not(.dark) .text-gray-500 {
+  color: var(--app-text-muted) !important;
+}
+
+html:not(.dark) [class*="bg-purple-"].text-white,
+html:not(.dark) [class*="bg-indigo-"].text-white,
+html:not(.dark) [class*="bg-rose-"].text-white,
+html:not(.dark) [class*="bg-red-"].text-white,
+html:not(.dark) [class*="bg-emerald-"].text-white,
+html:not(.dark) [class*="bg-teal-"].text-white,
+html:not(.dark) [class*="bg-black"].text-white,
+html:not(.dark) [class*="bg-gradient-"].text-white,
+.contrast-on-color {
+  color: #ffffff !important;
+}
+
+html:not(.dark) .border-gray-700,
+html:not(.dark) .border-gray-800,
+html:not(.dark) .border-gray-900 {
+  border-color: var(--app-border) !important;
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.72; }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2.4s infinite ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (max-width: 640px) {
+  button,
+  [role="button"] {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
