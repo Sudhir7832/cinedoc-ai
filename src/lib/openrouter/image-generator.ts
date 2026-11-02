@@ -252,14 +252,26 @@ export class ImageGenerator {
     const safeTopic = (topic || 'Documentary').replace(/['":\\]/g, ' ').slice(0, 40).toUpperCase();
 
     const isHindi = /[\u0900-\u097F]/.test(safeTitle + safeTopic);
-    const fontfile = isHindi ? 'C\\:/Windows/Fonts/Nirmala.ttc' : 'C\\:/Windows/Fonts/arial.ttf';
+    let fontClause = '';
+    if (process.platform === 'win32') {
+      const fontfile = isHindi ? 'C\\:/Windows/Fonts/Nirmala.ttc' : 'C\\:/Windows/Fonts/arial.ttf';
+      fontClause = `:fontfile='${fontfile}'`;
+    } else {
+      const linuxFonts = [
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+        '/usr/share/fonts/truetype/freefont/FreeSans.ttf',
+        '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'
+      ];
+      const found = linuxFonts.find(f => fs.existsSync(f));
+      if (found) fontClause = `:fontfile='${found}'`;
+    }
 
     const sceneLabel = contentStyle === 'kids' ? `STORY ${scene.sceneNumber}` : `SCENE ${scene.sceneNumber}`;
     const width = aspectRatio === '9:16' ? 1080 : 1920;
     const height = aspectRatio === '9:16' ? 1920 : 1080;
     const topY = aspectRatio === '9:16' ? 180 : 80;
     const barHeight = aspectRatio === '9:16' ? 90 : 60;
-    const cmd = `ffmpeg -y -f lavfi -i "color=c=${color}:s=${width}x${height}" -vf "drawtext=fontfile='${fontfile}':text='${safeTopic}':fontsize=28:fontcolor=white@0.8:x=(w-text_w)/2:y=${topY},drawtext=fontfile='${fontfile}':text='${sceneLabel}\\: ${safeTitle.toUpperCase()}':fontsize=42:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2,drawbox=x=0:y=0:w=${width}:h=${barHeight}:color=black@0.45:t=fill,drawbox=x=0:y=${height - barHeight}:w=${width}:h=${barHeight}:color=black@0.45:t=fill" -frames:v 1 "${fullPath}"`;
+    const cmd = `ffmpeg -y -f lavfi -i "color=c=${color}:s=${width}x${height}" -vf "drawtext=text='${safeTopic}'${fontClause}:fontsize=28:fontcolor=white@0.8:x=(w-text_w)/2:y=${topY},drawtext=text='${sceneLabel}\\: ${safeTitle.toUpperCase()}'${fontClause}:fontsize=42:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2,drawbox=x=0:y=0:w=${width}:h=${barHeight}:color=black@0.45:t=fill,drawbox=x=0:y=${height - barHeight}:w=${width}:h=${barHeight}:color=black@0.45:t=fill" -frames:v 1 "${fullPath}"`;
 
     await execAsync(cmd);
     return `/generated/${jobId}/images/${filename}`;
