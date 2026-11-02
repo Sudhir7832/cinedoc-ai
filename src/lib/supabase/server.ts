@@ -2,19 +2,13 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import type { Database } from './database.types';
+import { getSupabasePublicConfig, normalizeSupabaseUrl } from './config';
 
 type PendingCookie = { name: string; value: string; options: CookieOptions };
 
-function getPublicConfig() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) throw new Error('Supabase public URL and publishable key are not configured.');
-  return { url, key };
-}
-
 export function isServerSupabaseConfigured(): boolean {
   return Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL
+    normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL)
     && (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
     && process.env.SUPABASE_SERVICE_ROLE_KEY
   );
@@ -23,7 +17,7 @@ export function isServerSupabaseConfigured(): boolean {
 let serviceClient: SupabaseClient<Database> | null = null;
 
 export function getServiceSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const url = normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !serviceKey) throw new Error('Supabase URL and service role key are required for database operations.');
   if (!serviceClient) {
@@ -35,7 +29,7 @@ export function getServiceSupabase() {
 }
 
 export function createRouteSupabase(req: NextRequest) {
-  const { url, key } = getPublicConfig();
+  const { url, key } = getSupabasePublicConfig();
   let pendingCookies: PendingCookie[] = [];
   const client = createServerClient<Database>(url, key, {
     cookies: {
@@ -55,7 +49,7 @@ export function createRouteSupabase(req: NextRequest) {
 }
 
 export function createProxySupabase(req: NextRequest, response: NextResponse) {
-  const { url, key } = getPublicConfig();
+  const { url, key } = getSupabasePublicConfig();
   return createServerClient<Database>(url, key, {
     cookies: {
       getAll: () => req.cookies.getAll(),

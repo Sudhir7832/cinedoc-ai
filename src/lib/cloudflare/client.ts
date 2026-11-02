@@ -175,6 +175,9 @@ export class CloudflareClient {
         const json = JSON.parse(errText);
         parsedMsg = json.errors?.[0]?.message || errText;
       } catch {}
+      if (res.status === 429) {
+        throw new Error(`Cloudflare TTS daily quota is exhausted. Use another provider or upgrade Workers AI. ${parsedMsg}`);
+      }
       throw new Error(`Cloudflare TTS (${model}) error ${res.status}: ${parsedMsg}`);
     }
 

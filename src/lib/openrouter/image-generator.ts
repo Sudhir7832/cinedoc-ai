@@ -53,11 +53,19 @@ export class ImageGenerator {
         ? `${scene.imagePrompt}, ${KIDS_IMAGE_DIRECTION[job.kidsFormat || 'entertainment']}, ${composition}, age-appropriate and non-frightening, no text, no watermark`
         : `${scene.imagePrompt}, cinematic documentary realism, natural detail, ${composition}, no text, no watermark`;
       const filename = `scene_${scene.sceneNumber.toString().padStart(2, '0')}.png`;
-      const expectedFilePath = path.join(imagesDir, filename);
+      const baseName = `scene_${scene.sceneNumber.toString().padStart(2, '0')}`;
+      const existingFilename = ['png', 'jpg', 'webp']
+        .map(extension => `${baseName}.${extension}`)
+        .find(candidate => {
+          const candidatePath = path.join(imagesDir, candidate);
+          return fs.existsSync(candidatePath) && fs.statSync(candidatePath).size > 1000;
+        });
 
       // Check if image already exists from a previous or partial run
-      if (fs.existsSync(expectedFilePath) && fs.statSync(expectedFilePath).size > 1000) {
-        scene.imagePath = `/generated/${job.id}/images/${filename}`;
+      if (existingFilename) {
+        const existingFilePath = path.join(imagesDir, existingFilename);
+        scene.imagePath = `/generated/${job.id}/images/${existingFilename}`;
+        scene.imageUpdatedAt = fs.statSync(existingFilePath).mtime.toISOString();
         scene.imageStatus = 'completed';
         scene.error = undefined;
         job.progress.imagesCompleted = job.scenes.filter(s => s.imageStatus === 'completed').length;
@@ -83,6 +91,7 @@ export class ImageGenerator {
           const { buffer } = await CloudflareClient.generateImage(styledPrompt, cfg.cloudflareImageModel);
           if (buffer && buffer.length > 1000) {
             scene.imagePath = StorageManager.saveImageFile(job.id, scene.sceneNumber, buffer);
+            scene.imageUpdatedAt = new Date().toISOString();
             scene.imageStatus = 'completed';
             scene.error = undefined;
             job.progress.imagesCompleted = job.scenes.filter(s => s.imageStatus === 'completed').length;
@@ -105,6 +114,7 @@ export class ImageGenerator {
           const buf = await puterImageToBuffer(raw);
           if (buf && buf.length > 1000) {
             scene.imagePath = StorageManager.saveImageFile(job.id, scene.sceneNumber, buf);
+            scene.imageUpdatedAt = new Date().toISOString();
             scene.imageStatus = 'completed';
             scene.error = undefined;
             job.progress.imagesCompleted = job.scenes.filter(s => s.imageStatus === 'completed').length;
@@ -122,6 +132,7 @@ export class ImageGenerator {
         try {
           const { buffer, cost } = await OpenRouterClient.generateImage(styledPrompt, undefined, job.aspectRatio || '16:9');
           scene.imagePath = StorageManager.saveImageFile(job.id, scene.sceneNumber, buffer);
+          scene.imageUpdatedAt = new Date().toISOString();
           scene.imageStatus = 'completed';
           scene.error = undefined;
           success = true;
@@ -154,6 +165,7 @@ export class ImageGenerator {
                 const buf = await puterImageToBuffer(raw);
                 if (buf && buf.length > 1000) {
                   scene.imagePath = StorageManager.saveImageFile(job.id, scene.sceneNumber, buf);
+                  scene.imageUpdatedAt = new Date().toISOString();
                   scene.imageStatus = 'completed';
                   scene.error = undefined;
                   success = true;
@@ -167,6 +179,7 @@ export class ImageGenerator {
             console.log(`[ImageGenerator] Generating high-res cinematic documentary visual for scene ${scene.sceneNumber}...`);
             await this.generateCinematicSceneImage(job.id, scene, job.topic, job.contentStyle || 'documentary', job.kidsFormat || 'entertainment', job.aspectRatio || '16:9');
             scene.imagePath = `/generated/${job.id}/images/${filename}`;
+            scene.imageUpdatedAt = new Date().toISOString();
             scene.imageStatus = 'completed';
             scene.error = undefined;
             success = true;

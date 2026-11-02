@@ -3,7 +3,9 @@ import { createRouteSupabase } from '@/lib/supabase/server';
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get('code');
-  const redirect = NextResponse.redirect(new URL('/', req.url));
+  const requestedNext = req.nextUrl.searchParams.get('next') || '/';
+  const safeNext = requestedNext.startsWith('/') && !requestedNext.startsWith('//') ? requestedNext : '/';
+  const redirect = NextResponse.redirect(new URL(safeNext, req.url));
   if (!code) return redirect;
 
   const auth = createRouteSupabase(req);

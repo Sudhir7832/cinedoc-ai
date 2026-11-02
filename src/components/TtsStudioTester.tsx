@@ -20,6 +20,13 @@ interface TtsStudioTesterProps {
   onSavedAsDefault?: () => void;
 }
 
+type ProviderHealth = 'ready' | 'configured' | 'missing' | 'error';
+
+function ProviderStatus({ status }: { status: ProviderHealth }) {
+  const label = status === 'ready' ? 'Ready' : status === 'configured' ? 'Configured' : status === 'error' ? 'Check key/quota' : 'Key required';
+  return <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wide ${status === 'ready' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300' : status === 'error' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-300' : status === 'configured' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-300' : 'bg-gray-500/10 text-secondary'}`}>{label}</span>;
+}
+
 const SAMPLE_TEXTS = [
   {
     label: 'Space Mystery',
@@ -75,12 +82,20 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
   const [isSavingDefault, setIsSavingDefault] = useState(false);
+  const [providerHealth, setProviderHealth] = useState<Record<TtsProvider, ProviderHealth>>({ neural: 'ready', openrouter: 'missing', cloudflare: 'missing', sarvam: 'missing' });
 
   useEffect(() => {
     fetch('/api/admin/settings')
       .then(response => response.json())
       .then(data => {
         const config = data.runtimeConfig || {};
+        setProviderHealth(current => ({
+          ...current,
+          neural: 'ready',
+          openrouter: config.hasOpenRouterKey ? 'configured' : 'missing',
+          cloudflare: config.hasCloudflareToken ? 'configured' : 'missing',
+          sarvam: config.hasSarvamKey ? 'configured' : 'missing',
+        }));
         const nextProvider = audience === 'kids' ? config.kidsTtsProvider : config.documentaryTtsProvider;
         const nextModel = audience === 'kids' ? config.kidsTtsModel : config.documentaryTtsModel;
         const nextVoice = audience === 'kids' ? config.kidsTtsVoice : config.documentaryTtsVoice;
@@ -142,9 +157,11 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
 
       setAudioUrl(data.audioUrl);
       setAudioSizeBytes(data.sizeBytes);
+      setProviderHealth(current => ({ ...current, [provider]: 'ready' }));
     } catch (err: unknown) {
       console.error('TTS test error:', err);
       setErrorMsg(err instanceof Error ? err.message : 'TTS generation failed.');
+      setProviderHealth(current => ({ ...current, [provider]: 'error' }));
     } finally {
       setIsLoading(false);
     }
@@ -276,9 +293,9 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
                     : 'bg-[var(--app-surface)] border-theme hover:border-orange-500/50 hover:bg-orange-500/5'
                 }`}
               >
-                <div className="font-bold text-xs text-primary flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                  Cloudflare
+                <div className="flex items-center justify-between gap-1.5">
+                  <span className="font-bold text-xs text-primary flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 shrink-0" />Cloudflare</span>
+                  <ProviderStatus status={providerHealth.cloudflare} />
                 </div>
                 <div className="text-[10px] text-secondary mt-1">ElevenLabs & Deepgram</div>
               </button>
@@ -296,9 +313,9 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
                     : 'bg-[var(--app-surface)] border-theme hover:border-indigo-500/50 hover:bg-indigo-500/5'
                 }`}
               >
-                <div className="font-bold text-xs text-primary flex items-center gap-1.5">
-                  <Radio className="w-3.5 h-3.5 shrink-0" />
-                  Sarvam AI
+                <div className="flex items-center justify-between gap-1.5">
+                  <span className="font-bold text-xs text-primary flex items-center gap-1.5"><Radio className="w-3.5 h-3.5 shrink-0" />Sarvam AI</span>
+                  <ProviderStatus status={providerHealth.sarvam} />
                 </div>
                 <div className="text-[10px] text-secondary mt-1">Bulbul v4 · Indic voices</div>
               </button>
@@ -312,9 +329,9 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
                     : 'bg-[var(--app-surface)] border-theme hover:border-rose-500/50 hover:bg-rose-500/5'
                 }`}
               >
-                <div className="font-bold text-xs text-primary flex items-center gap-1.5">
-                  <Volume2 className="w-3.5 h-3.5 shrink-0" />
-                  OpenRouter
+                <div className="flex items-center justify-between gap-1.5">
+                  <span className="font-bold text-xs text-primary flex items-center gap-1.5"><Volume2 className="w-3.5 h-3.5 shrink-0" />OpenRouter</span>
+                  <ProviderStatus status={providerHealth.openrouter} />
                 </div>
                 <div className="text-[10px] text-secondary mt-1">Fish Audio & OpenAI</div>
               </button>
@@ -328,9 +345,9 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
                     : 'bg-[var(--app-surface)] border-theme hover:border-cyan-500/50 hover:bg-cyan-500/5'
                 }`}
               >
-                <div className="font-bold text-xs text-primary flex items-center gap-1.5">
-                  <Sliders className="w-3.5 h-3.5 shrink-0" />
-                  Neural
+                <div className="flex items-center justify-between gap-1.5">
+                  <span className="font-bold text-xs text-primary flex items-center gap-1.5"><Sliders className="w-3.5 h-3.5 shrink-0" />Neural</span>
+                  <ProviderStatus status={providerHealth.neural} />
                 </div>
                 <div className="text-[10px] text-secondary mt-1">Local studio voice</div>
               </button>

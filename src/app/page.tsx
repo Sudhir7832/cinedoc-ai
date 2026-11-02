@@ -59,6 +59,7 @@ export default function Home() {
   // System status
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
   const [ffmpegAvailable, setFfmpegAvailable] = useState(true);
+  const [databaseAvailable, setDatabaseAvailable] = useState(false);
   const [testMode, setTestMode] = useState(true);
 
   const fetchJobs = async () => {
@@ -84,6 +85,7 @@ export default function Home() {
       if (data.success) {
         setApiKeyConfigured(data.apiKeyConfigured);
         setFfmpegAvailable(data.ffmpeg?.ffmpegAvailable ?? true);
+        setDatabaseAvailable(Boolean(data.supabase?.connected));
       }
 
       const cfgRes = await fetch('/api/config');
@@ -230,6 +232,7 @@ export default function Home() {
       <Navbar
         apiKeyConfigured={apiKeyConfigured}
         ffmpegAvailable={ffmpegAvailable}
+        databaseAvailable={databaseAvailable}
         testMode={testMode}
         user={user}
         welcomeCredits={welcomeCredits}

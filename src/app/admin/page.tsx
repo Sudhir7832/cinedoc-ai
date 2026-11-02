@@ -519,6 +519,10 @@ export default function AdminPage() {
                 <p className="eyebrow">Platform readiness</p>
                 <div className="mt-4 space-y-3">
                   <div className="flex items-center justify-between rounded-xl surface-soft p-3">
+                    <span className="text-xs font-semibold text-secondary">Database & authentication</span>
+                    <span className="text-xs font-extrabold text-emerald-500">Supabase connected</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-xl surface-soft p-3">
                     <span className="text-xs font-semibold text-secondary">Credit rate</span>
                     <span className="text-xs font-extrabold text-primary">{creditsPerMinute} / video min</span>
                   </div>
@@ -739,13 +743,15 @@ export default function AdminPage() {
                               <span>10</span>
                             </button>
                             {/* Toggle role */}
-                            <button
-                              onClick={() => handleToggleRole(u.id, u.role)}
-                              className="px-2 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium transition"
-                              title="Toggle User/Admin Role"
-                            >
-                              {u.role === 'admin' ? 'Make User' : 'Make Admin'}
-                            </button>
+                            {u.id !== currentUser?.id && (
+                              <button
+                                onClick={() => handleToggleRole(u.id, u.role)}
+                                className="px-2 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium transition"
+                                title="Toggle User/Admin Role"
+                              >
+                                {u.role === 'admin' ? 'Make User' : 'Make Admin'}
+                              </button>
+                            )}
                             {/* Delete User */}
                             {u.id !== currentUser?.id && (
                               <button

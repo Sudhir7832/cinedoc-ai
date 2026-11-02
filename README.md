@@ -72,6 +72,16 @@ DATA_DIR=data
    ```
 5. Restart the development server.
 
+### Google Sign-In
+
+1. In Supabase, open **Authentication → Providers → Google** and enable it with your Google OAuth Client ID and secret.
+2. In Google Cloud, add Supabase's callback URL as an authorized redirect URI:
+   `https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback`
+3. In Supabase **Authentication → URL Configuration**, add:
+   - `http://localhost:3000/auth/callback`
+   - `https://your-production-domain.com/auth/callback`
+4. Set the Supabase Site URL to your production domain.
+
 To import the previous local JSON records, set `MIGRATION_DEFAULT_PASSWORD` and run:
 
 ```bash

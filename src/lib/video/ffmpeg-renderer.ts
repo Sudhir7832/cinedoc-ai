@@ -5,6 +5,7 @@ import { promisify } from 'util';
 import { DocumentaryJob } from '../types';
 import { StorageManager } from '../storage';
 import { VideoValidator } from './validator';
+import { R2Storage } from '../storage/r2';
 
 const execAsync = promisify(exec);
 
@@ -36,7 +37,14 @@ export class FFmpegRenderer {
     for (let i = 0; i < totalScenes; i++) {
       const scene = job.scenes[i];
       const sceneNum = scene.sceneNumber;
-      const imageFilename = `scene_${sceneNum.toString().padStart(2, '0')}.png`;
+      const expectedBaseName = `scene_${sceneNum.toString().padStart(2, '0')}`;
+      const requestedFilename = path.basename((scene.imagePath || '').split('?')[0]);
+      const allowedRequestedFile = new RegExp(`^${expectedBaseName}\\.(png|jpg|webp)$`, 'i').test(requestedFilename)
+        ? requestedFilename
+        : '';
+      const fallbackFilename = ['png', 'jpg', 'webp'].map(extension => `${expectedBaseName}.${extension}`)
+        .find(filename => fs.existsSync(path.join(jobDir, 'images', filename)));
+      const imageFilename = allowedRequestedFile || fallbackFilename || `${expectedBaseName}.png`;
       const fullImagePath = path.join(jobDir, 'images', imageFilename);
 
       if (!fs.existsSync(fullImagePath)) {
@@ -171,7 +179,19 @@ export class FFmpegRenderer {
       console.warn('Temporary render cleanup warning:', cleanupErr);
     }
 
-    job.videoUrl = `/generated/${job.id}/documentary.mp4`;
+    if (R2Storage.isConfigured()) {
+      try {
+        job.progress.stepLabel = 'Uploading video to Cloudflare R2 storage...';
+        if (onProgressUpdate) await onProgressUpdate(job);
+        const { videoUrl } = await R2Storage.uploadJobVideo(job.id, finalMp4Path);
+        job.videoUrl = videoUrl;
+      } catch (r2Err) {
+        console.error('[R2Storage] Upload error, falling back to local URL:', r2Err);
+        job.videoUrl = `/generated/${job.id}/documentary.mp4`;
+      }
+    } else {
+      job.videoUrl = `/generated/${job.id}/documentary.mp4`;
+    }
     job.videoPath = finalMp4Path;
     job.finalDurationSeconds = Math.round(validation.durationSeconds || 0);
     job.fileSizeBytes = validation.sizeBytes;

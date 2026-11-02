@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { DocumentaryJob } from '@/lib/types';
 import { TimelineEditorModal } from '@/components/TimelineEditorModal';
+import { scenePreviewUrl } from '@/lib/media-url';
 
 interface JobProgressViewProps {
   jobId: string;
@@ -362,7 +363,7 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
                   <div className="w-36 h-24 rounded-xl bg-gray-950 border border-gray-800 shrink-0 overflow-hidden relative flex items-center justify-center group/thumb">
                     {scene.imagePath ? (
                       <Image
-                        src={scene.imagePath}
+                        src={scenePreviewUrl(job.id, scene.sceneNumber, scene.imageUpdatedAt || job.updatedAt)}
                         alt={scene.title}
                         fill
                         sizes="144px"

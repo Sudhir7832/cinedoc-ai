@@ -18,6 +18,7 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 interface NavbarProps {
   apiKeyConfigured: boolean;
   ffmpegAvailable: boolean;
+  databaseAvailable: boolean;
   testMode?: boolean;
   user: SafeUser | null;
   welcomeCredits?: number;
@@ -31,6 +32,7 @@ interface NavbarProps {
 export function Navbar({
   apiKeyConfigured,
   ffmpegAvailable,
+  databaseAvailable,
   testMode = false,
   user,
   welcomeCredits = 10,
@@ -42,7 +44,7 @@ export function Navbar({
 }: NavbarProps) {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const availableCredits = user ? (user.availableCredits ?? user.credits) : 0;
-  const systemReady = apiKeyConfigured && ffmpegAvailable;
+  const systemReady = apiKeyConfigured && ffmpegAvailable && databaseAvailable;
 
   return (
     <header className="app-header sticky top-0 z-40 px-4 sm:px-6">
@@ -81,7 +83,7 @@ export function Navbar({
             title={systemReady ? 'AI providers and render engine are ready' : 'Open settings to finish system setup'}
           >
             <span className={`h-2 w-2 rounded-full ${systemReady ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-            <span className="text-secondary">{testMode ? 'Sandbox' : systemReady ? 'Production ready' : 'Setup required'}</span>
+            <span className="text-secondary">{!databaseAvailable ? 'Supabase offline' : testMode ? 'Sandbox' : systemReady ? 'Production ready' : 'Setup required'}</span>
           </div>
 
           <ThemeToggle />

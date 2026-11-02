@@ -3,6 +3,7 @@ import path from 'path';
 import { DocumentaryJob } from './types';
 import { getServiceSupabase } from './supabase/server';
 import type { Json } from './supabase/database.types';
+import { R2Storage } from './storage/r2';
 
 export class StorageManager {
   public static isValidJobId(jobId: string): boolean {
@@ -77,12 +78,26 @@ export class StorageManager {
       fs.rmSync(publicDir, { recursive: true, force: true });
     }
 
+    if (R2Storage.isConfigured()) {
+      await R2Storage.deleteJobFiles(jobId).catch(err => {
+        console.warn(`[StorageManager] Failed to clean up R2 objects for ${jobId}:`, err);
+      });
+    }
+
     return true;
   }
 
   public static saveImageFile(jobId: string, sceneNumber: number, buffer: Buffer): string {
     const imagesDir = this.getJobImagesDir(jobId);
-    const filename = `scene_${sceneNumber.toString().padStart(2, '0')}.png`;
+    let extension = 'png';
+    if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) extension = 'jpg';
+    if (buffer.length >= 12 && buffer.slice(0, 4).toString('ascii') === 'RIFF' && buffer.slice(8, 12).toString('ascii') === 'WEBP') extension = 'webp';
+    const baseName = `scene_${sceneNumber.toString().padStart(2, '0')}`;
+    for (const existingExtension of ['png', 'jpg', 'webp']) {
+      const existingPath = path.join(imagesDir, `${baseName}.${existingExtension}`);
+      if (fs.existsSync(existingPath)) fs.unlinkSync(existingPath);
+    }
+    const filename = `${baseName}.${extension}`;
     const fullPath = path.join(imagesDir, filename);
     fs.writeFileSync(fullPath, buffer);
     return `/generated/${jobId}/images/${filename}`;

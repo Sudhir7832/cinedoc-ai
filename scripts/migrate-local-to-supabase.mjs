@@ -60,6 +60,16 @@ if (fs.existsSync(jobsDir)) {
     const userId = idMap.get(job.userId) || fallbackUserId;
     if (!userId) continue;
     job.userId = userId;
+    for (const scene of job.scenes || []) {
+      const cleanPath = String(scene.imagePath || '').split('?')[0];
+      if (cleanPath.endsWith('.png')) {
+        const jpgPath = cleanPath.slice(0, -4) + '.jpg';
+        if (fs.existsSync(path.join(process.cwd(), 'public', jpgPath.replace(/^\//, '')))) {
+          scene.imagePath = jpgPath;
+          scene.imageUpdatedAt = fs.statSync(path.join(process.cwd(), 'public', jpgPath.replace(/^\//, ''))).mtime.toISOString();
+        }
+      }
+    }
     const { error } = await supabase.from('documentary_jobs').upsert({ id: job.id, user_id: userId, status: job.status, data: job, created_at: job.createdAt, updated_at: job.updatedAt });
     if (error) throw error;
   }

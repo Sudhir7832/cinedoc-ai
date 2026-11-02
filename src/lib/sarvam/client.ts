@@ -13,7 +13,7 @@ interface SarvamSpeechOptions {
 
 interface SarvamSpeechResponse {
   audios?: string[];
-  error?: { message?: string };
+  error?: { message?: string; code?: string };
   message?: string;
 }
 
@@ -77,6 +77,9 @@ export class SarvamClient {
 
     const data = await response.json() as SarvamSpeechResponse;
     if (!response.ok) {
+      if (response.status === 401 || response.status === 403 || data.error?.code === 'invalid_api_key_error') {
+        throw new Error('Sarvam authentication failed. Replace the Sarvam API key in Admin Settings or SARVAM_API_KEY.');
+      }
       throw new Error(data.error?.message || data.message || `Sarvam TTS failed with status ${response.status}.`);
     }
     if (!Array.isArray(data.audios) || data.audios.length === 0) {

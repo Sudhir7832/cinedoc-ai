@@ -30,6 +30,7 @@ export interface SceneItem {
   subtitleText: string;
   // Execution fields
   imagePath?: string;
+  imageUpdatedAt?: string;
   audioPath?: string;
   audioDurationSeconds?: number;
   imageStatus: SceneItemStatus;

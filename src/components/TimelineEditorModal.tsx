@@ -18,6 +18,7 @@ import {
   EyeOff,
 } from 'lucide-react';
 import { DocumentaryJob, SceneItem } from '@/lib/types';
+import { scenePreviewUrl } from '@/lib/media-url';
 
 interface TimelineEditorModalProps {
   job: DocumentaryJob | null;
@@ -113,7 +114,9 @@ export const TimelineEditorModal: React.FC<TimelineEditorModalProps> = ({
 
       // Update local state with new image path
       const next = scenes.map((s) => 
-        s.sceneNumber === sceneNumber ? { ...s, imagePath: data.imagePath } : s
+        s.sceneNumber === sceneNumber
+          ? { ...s, imagePath: data.imagePath, imageUpdatedAt: data.job?.scenes?.find((scene: SceneItem) => scene.sceneNumber === sceneNumber)?.imageUpdatedAt || new Date().toISOString() }
+          : s
       );
       setScenes(next);
       onJobUpdated(data.job);
@@ -310,7 +313,7 @@ export const TimelineEditorModal: React.FC<TimelineEditorModalProps> = ({
                 <div className="relative h-40 w-full sm:h-24 sm:w-44 rounded-xl bg-[var(--app-surface-soft)] border border-theme shrink-0 overflow-hidden group">
                   {scene.imagePath ? (
                     <Image
-                      src={scene.imagePath}
+                      src={scenePreviewUrl(job.id, scene.sceneNumber, scene.imageUpdatedAt || job.updatedAt)}
                       alt={scene.title}
                       fill
                       sizes="(max-width: 639px) 100vw, 176px"

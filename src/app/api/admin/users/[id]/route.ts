@@ -7,11 +7,18 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await SessionManager.requireAdmin(req);
+    const admin = await SessionManager.requireAdmin(req);
     const { id } = await params;
     const body = await req.json();
 
     const { deltaCredits, role, name, email } = body;
+
+    if (admin.id === id && role && role !== 'admin') {
+      return NextResponse.json(
+        { success: false, error: 'Cannot remove admin role from your own account' },
+        { status: 400 }
+      );
+    }
 
     let updated;
     if (typeof deltaCredits === 'number') {
