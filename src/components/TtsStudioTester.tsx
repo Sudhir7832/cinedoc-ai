@@ -23,8 +23,18 @@ interface TtsStudioTesterProps {
 type ProviderHealth = 'ready' | 'configured' | 'missing' | 'error';
 
 function ProviderStatus({ status }: { status: ProviderHealth }) {
-  const label = status === 'ready' ? 'Ready' : status === 'configured' ? 'Configured' : status === 'error' ? 'Check key/quota' : 'Key required';
-  return <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wide ${status === 'ready' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300' : status === 'error' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-300' : status === 'configured' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-300' : 'bg-gray-500/10 text-secondary'}`}>{label}</span>;
+  const config = {
+    ready: { label: 'Ready', cls: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30' },
+    configured: { label: 'Active', cls: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30' },
+    error: { label: 'Error', cls: 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30' },
+    missing: { label: 'Setup', cls: 'bg-gray-500/15 text-gray-700 dark:text-gray-300 border-gray-500/30' },
+  }[status];
+
+  return (
+    <span className={`inline-flex items-center shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider border ${config.cls}`}>
+      {config.label}
+    </span>
+  );
 }
 
 const SAMPLE_TEXTS = [
@@ -218,16 +228,16 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
       <div className="absolute top-0 right-1/4 -mt-16 w-80 h-80 bg-gradient-to-br from-cyan-500/10 via-indigo-500/10 to-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-gray-800/80 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-theme pb-5">
         <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-xs text-cyan-400 font-semibold">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-xs text-cyan-600 dark:text-cyan-400 font-semibold">
             <Radio className="w-3.5 h-3.5 animate-pulse" />
             <span>Admin-only narration testing</span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+          <h2 className="text-xl sm:text-2xl font-extrabold text-primary tracking-tight flex items-center gap-2">
             Voice provider quality lab
           </h2>
-          <p className="text-xs sm:text-sm text-gray-400">
+          <p className="text-xs sm:text-sm text-secondary">
             Compare Sarvam, Cloudflare, OpenRouter, and neural voices before promoting one to an audience-specific production profile.
           </p>
         </div>
@@ -257,7 +267,7 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
         {/* Left Column: Provider & Voice Selectors */}
         <div className="lg:col-span-5 space-y-4">
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-gray-300 uppercase tracking-wider block">1. Choose audience profile</label>
+            <label className="text-xs font-semibold text-secondary uppercase tracking-wider block">1. Choose audience profile</label>
             <div className="grid grid-cols-2 gap-2 rounded-2xl surface-soft p-1.5">
               <button
                 type="button"
@@ -280,24 +290,27 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
           
           {/* Provider Selection */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-gray-300 uppercase tracking-wider block">
+            <label className="text-xs font-semibold text-secondary uppercase tracking-wider block">
               2. Choose TTS Provider
             </label>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2.5">
               <button
                 type="button"
                 onClick={() => setProvider('cloudflare')}
-                className={`p-3 rounded-2xl border text-left transition flex flex-col justify-between ${
+                className={`p-3 rounded-2xl border text-left transition flex flex-col justify-between overflow-hidden ${
                   provider === 'cloudflare'
                     ? 'bg-orange-500/10 border-orange-500 ring-1 ring-orange-500/30 shadow-sm'
-                    : 'bg-[var(--app-surface)] border-theme hover:border-orange-500/50 hover:bg-orange-500/5'
+                    : 'surface-card border-theme hover:border-orange-500/50 hover:bg-orange-500/5'
                 }`}
               >
-                <div className="flex items-center justify-between gap-1.5">
-                  <span className="font-bold text-xs text-primary flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 shrink-0" />Cloudflare</span>
+                <div className="flex items-center justify-between gap-1.5 min-w-0">
+                  <span className="font-bold text-xs text-primary flex items-center gap-1.5 truncate">
+                    <Sparkles className="w-3.5 h-3.5 shrink-0 text-orange-500" />
+                    <span className="truncate">Cloudflare</span>
+                  </span>
                   <ProviderStatus status={providerHealth.cloudflare} />
                 </div>
-                <div className="text-[10px] text-secondary mt-1">ElevenLabs & Deepgram</div>
+                <div className="text-[10px] text-secondary mt-1 truncate">ElevenLabs & Deepgram</div>
               </button>
 
               <button
@@ -307,60 +320,69 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
                   setSarvamModel('bulbul:v4-flash');
                   setSarvamVoice(audience === 'kids' ? 'chhavi_hi_kids' : 'anand_hi_documentary');
                 }}
-                className={`p-3 rounded-2xl border text-left transition flex flex-col justify-between ${
+                className={`p-3 rounded-2xl border text-left transition flex flex-col justify-between overflow-hidden ${
                   provider === 'sarvam'
                     ? 'bg-indigo-500/10 border-indigo-500 ring-1 ring-indigo-500/30 shadow-sm'
-                    : 'bg-[var(--app-surface)] border-theme hover:border-indigo-500/50 hover:bg-indigo-500/5'
+                    : 'surface-card border-theme hover:border-indigo-500/50 hover:bg-indigo-500/5'
                 }`}
               >
-                <div className="flex items-center justify-between gap-1.5">
-                  <span className="font-bold text-xs text-primary flex items-center gap-1.5"><Radio className="w-3.5 h-3.5 shrink-0" />Sarvam AI</span>
+                <div className="flex items-center justify-between gap-1.5 min-w-0">
+                  <span className="font-bold text-xs text-primary flex items-center gap-1.5 truncate">
+                    <Radio className="w-3.5 h-3.5 shrink-0 text-indigo-500" />
+                    <span className="truncate">Sarvam AI</span>
+                  </span>
                   <ProviderStatus status={providerHealth.sarvam} />
                 </div>
-                <div className="text-[10px] text-secondary mt-1">Bulbul v4 · Indic voices</div>
+                <div className="text-[10px] text-secondary mt-1 truncate">Bulbul v4 · Indic voices</div>
               </button>
 
               <button
                 type="button"
                 onClick={() => setProvider('openrouter')}
-                className={`p-3 rounded-2xl border text-left transition flex flex-col justify-between ${
+                className={`p-3 rounded-2xl border text-left transition flex flex-col justify-between overflow-hidden ${
                   provider === 'openrouter'
                     ? 'bg-rose-500/10 border-rose-500 ring-1 ring-rose-500/30 shadow-sm'
-                    : 'bg-[var(--app-surface)] border-theme hover:border-rose-500/50 hover:bg-rose-500/5'
+                    : 'surface-card border-theme hover:border-rose-500/50 hover:bg-rose-500/5'
                 }`}
               >
-                <div className="flex items-center justify-between gap-1.5">
-                  <span className="font-bold text-xs text-primary flex items-center gap-1.5"><Volume2 className="w-3.5 h-3.5 shrink-0" />OpenRouter</span>
+                <div className="flex items-center justify-between gap-1.5 min-w-0">
+                  <span className="font-bold text-xs text-primary flex items-center gap-1.5 truncate">
+                    <Volume2 className="w-3.5 h-3.5 shrink-0 text-rose-500" />
+                    <span className="truncate">OpenRouter</span>
+                  </span>
                   <ProviderStatus status={providerHealth.openrouter} />
                 </div>
-                <div className="text-[10px] text-secondary mt-1">Fish Audio & OpenAI</div>
+                <div className="text-[10px] text-secondary mt-1 truncate">Fish Audio & OpenAI</div>
               </button>
 
               <button
                 type="button"
                 onClick={() => setProvider('neural')}
-                className={`p-3 rounded-2xl border text-left transition flex flex-col justify-between ${
+                className={`p-3 rounded-2xl border text-left transition flex flex-col justify-between overflow-hidden ${
                   provider === 'neural'
                     ? 'bg-cyan-500/10 border-cyan-500 ring-1 ring-cyan-500/30 shadow-sm'
-                    : 'bg-[var(--app-surface)] border-theme hover:border-cyan-500/50 hover:bg-cyan-500/5'
+                    : 'surface-card border-theme hover:border-cyan-500/50 hover:bg-cyan-500/5'
                 }`}
               >
-                <div className="flex items-center justify-between gap-1.5">
-                  <span className="font-bold text-xs text-primary flex items-center gap-1.5"><Sliders className="w-3.5 h-3.5 shrink-0" />Neural</span>
+                <div className="flex items-center justify-between gap-1.5 min-w-0">
+                  <span className="font-bold text-xs text-primary flex items-center gap-1.5 truncate">
+                    <Sliders className="w-3.5 h-3.5 shrink-0 text-cyan-500" />
+                    <span className="truncate">Neural</span>
+                  </span>
                   <ProviderStatus status={providerHealth.neural} />
                 </div>
-                <div className="text-[10px] text-secondary mt-1">Local studio voice</div>
+                <div className="text-[10px] text-secondary mt-1 truncate">Local studio voice</div>
               </button>
             </div>
           </div>
 
           {/* Provider-Specific Options */}
-          <div className="p-4 rounded-2xl bg-gray-900/80 border border-gray-800/80 space-y-3.5">
+          <div className="p-4 rounded-2xl surface-card border-theme space-y-3.5">
             {provider === 'cloudflare' && (
               <>
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-semibold text-orange-300">
+                    <label className="text-xs font-semibold text-orange-400">
                       Cloudflare TTS Model
                     </label>
                     <span className="text-[10px] text-orange-400 font-mono">ElevenLabs / Deepgram</span>
@@ -379,12 +401,12 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
                         onClick={() => setCfModel(m.id)}
                         className={`px-3 py-2 rounded-xl text-left text-xs transition border flex items-center justify-between ${
                           cfModel === m.id
-                            ? 'bg-orange-950/50 border-orange-500 text-orange-200 font-medium'
-                            : 'bg-gray-950 border-gray-800 text-gray-400 hover:text-gray-200'
+                            ? 'bg-orange-500/15 border-orange-500 text-orange-600 dark:text-orange-200 font-semibold shadow-sm'
+                            : 'bg-[var(--app-surface-soft)] border-theme text-secondary hover:text-primary hover:border-orange-500/30'
                         }`}
                       >
                         <span>{m.label}</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-300 font-mono">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded surface-soft border-theme text-secondary font-mono">
                           {m.badge}
                         </span>
                       </button>
@@ -396,14 +418,14 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
                       value={cfModel}
                       onChange={(e) => setCfModel(e.target.value)}
                       placeholder="e.g. @cf/myshell-ai/melotts"
-                      className="w-full px-3 py-1.5 bg-gray-950 border border-gray-800 rounded-lg text-xs text-orange-300 font-mono focus:border-orange-500 focus:outline-none"
+                      className="w-full px-3 py-1.5 surface-soft border-theme rounded-lg text-xs text-primary font-mono focus:border-orange-500 focus:outline-none"
                     />
                   </div>
                 </div>
 
                 {cfModel === 'elevenlabs/eleven-v3' && (
-                  <div className="pt-2 border-t border-gray-800/80 space-y-2">
-                    <label className="text-xs font-semibold text-orange-300 block">
+                  <div className="pt-2 border-t border-theme space-y-2">
+                    <label className="text-xs font-semibold text-orange-400 block">
                       ElevenLabs Voice Persona
                     </label>
                     <div className="grid grid-cols-2 gap-1.5">
@@ -414,8 +436,8 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
                           onClick={() => setCfVoiceId(v.id)}
                           className={`px-2.5 py-1.5 rounded-lg text-left text-[11px] border transition ${
                             cfVoiceId === v.id
-                              ? 'bg-orange-900/40 border-orange-500 text-orange-200 font-medium'
-                              : 'bg-gray-950 border-gray-800 text-gray-400 hover:text-gray-200'
+                              ? 'bg-orange-500/15 border-orange-500 text-orange-600 dark:text-orange-200 font-semibold shadow-sm'
+                              : 'bg-[var(--app-surface-soft)] border-theme text-secondary hover:text-primary'
                           }`}
                         >
                           {v.name}
@@ -428,7 +450,7 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
                         value={cfVoiceId}
                         onChange={(e) => setCfVoiceId(e.target.value)}
                         placeholder="Or custom Voice ID: JBFqnCBsd6RMkjVDRZzb"
-                        className="w-full px-3 py-1.5 bg-gray-950 border border-gray-800 rounded-lg text-xs text-orange-300 font-mono focus:border-orange-500 focus:outline-none"
+                        className="w-full px-3 py-1.5 surface-soft border-theme rounded-lg text-xs text-primary font-mono focus:border-orange-500 focus:outline-none"
                       />
                     </div>
                   </div>
@@ -439,7 +461,7 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
             {provider === 'openrouter' && (
               <>
                 <div>
-                  <label className="text-xs font-semibold text-rose-300 block mb-1.5">
+                  <label className="text-xs font-semibold text-rose-400 block mb-1.5">
                     OpenRouter Speech Model
                   </label>
                   <div className="grid grid-cols-1 gap-1.5">
@@ -453,8 +475,8 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
                         onClick={() => setOrModel(m.id)}
                         className={`px-3 py-2 rounded-xl text-left text-xs transition border ${
                           orModel === m.id
-                            ? 'bg-rose-950/50 border-rose-500 text-rose-200 font-medium'
-                            : 'bg-gray-950 border-gray-800 text-gray-400 hover:text-gray-200'
+                            ? 'bg-rose-500/15 border-rose-500 text-rose-600 dark:text-rose-200 font-semibold shadow-sm'
+                            : 'bg-[var(--app-surface-soft)] border-theme text-secondary hover:text-primary hover:border-rose-500/30'
                         }`}
                       >
                         {m.label}
@@ -464,8 +486,8 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
                 </div>
 
                 {orModel.includes('openai') && (
-                  <div className="pt-2 border-t border-gray-800/80 space-y-2">
-                    <label className="text-xs font-semibold text-rose-300 block">
+                  <div className="pt-2 border-t border-theme space-y-2">
+                    <label className="text-xs font-semibold text-rose-400 block">
                       OpenAI Voice Actor
                     </label>
                     <div className="grid grid-cols-3 gap-1.5">
@@ -476,8 +498,8 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
                           onClick={() => setOrVoice(v)}
                           className={`px-2 py-1 rounded-lg text-center text-xs border capitalize transition ${
                             orVoice === v
-                              ? 'bg-rose-900/40 border-rose-500 text-rose-200 font-medium'
-                              : 'bg-gray-950 border-gray-800 text-gray-400 hover:text-gray-200'
+                              ? 'bg-rose-500/15 border-rose-500 text-rose-600 dark:text-rose-200 font-semibold shadow-sm'
+                              : 'bg-[var(--app-surface-soft)] border-theme text-secondary hover:text-primary'
                           }`}
                         >
                           {v}
@@ -491,7 +513,7 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
 
             {provider === 'neural' && (
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-cyan-300 block mb-1.5">
+                <label className="text-xs font-semibold text-cyan-400 block mb-1.5">
                   Studio Neural Narrator
                 </label>
                 <div className="grid grid-cols-1 gap-1.5">
@@ -507,12 +529,12 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
                       onClick={() => setNeuralVoice(v.id)}
                       className={`px-3 py-2 rounded-xl text-left text-xs transition border flex items-center justify-between ${
                         neuralVoice === v.id
-                          ? 'bg-cyan-950/50 border-cyan-500 text-cyan-200 font-medium'
-                          : 'bg-gray-950 border-gray-800 text-gray-400 hover:text-gray-200'
+                          ? 'bg-cyan-500/15 border-cyan-500 text-cyan-600 dark:text-cyan-200 font-semibold shadow-sm'
+                          : 'bg-[var(--app-surface-soft)] border-theme text-secondary hover:text-primary hover:border-cyan-500/30'
                       }`}
                     >
                       <span>{v.label}</span>
-                      <span className="text-[10px] text-gray-500 font-mono">{v.lang}</span>
+                      <span className="text-[10px] text-secondary font-mono surface-soft px-1.5 py-0.5 rounded border-theme">{v.lang}</span>
                     </button>
                   ))}
                 </div>
@@ -550,28 +572,31 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
           
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
+              <label className="text-xs font-semibold text-secondary uppercase tracking-wider">
                 3. Enter Narration Text
               </label>
-              <span className="text-[11px] text-gray-500">{text.length} characters</span>
+              <span className="text-[11px] text-secondary font-medium">{text.length} characters</span>
             </div>
 
             {/* Quick text chips */}
-            <div className="flex flex-wrap gap-1.5">
-              {SAMPLE_TEXTS.map((sample) => (
-                <button
-                  key={sample.label}
-                  type="button"
-                  onClick={() => setText(sample.text)}
-                  className={`text-[11px] px-2.5 py-1 rounded-lg border transition ${
-                    text === sample.text
-                      ? 'bg-gray-800 border-gray-600 text-white'
-                      : 'bg-gray-900/60 border-gray-800 text-gray-400 hover:text-gray-200 hover:bg-gray-800'
-                  }`}
-                >
-                  {sample.label}
-                </button>
-              ))}
+            <div className="flex flex-wrap gap-2">
+              {SAMPLE_TEXTS.map((sample) => {
+                const isSelected = text === sample.text;
+                return (
+                  <button
+                    key={sample.label}
+                    type="button"
+                    onClick={() => setText(sample.text)}
+                    className={`text-xs px-3 py-1.5 rounded-xl border font-bold transition shadow-sm ${
+                      isSelected
+                        ? 'bg-cyan-600 border-cyan-500 text-white shadow-md shadow-cyan-600/20'
+                        : 'surface-card border-theme text-primary hover:bg-[var(--app-surface-soft)] hover:border-gray-400 dark:hover:border-gray-600'
+                    }`}
+                  >
+                    {sample.label}
+                  </button>
+                );
+              })}
             </div>
 
             <textarea
@@ -579,7 +604,7 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="Type or paste any documentary narration sentence here..."
-              className="w-full p-3.5 bg-gray-900 border border-gray-800 rounded-2xl text-xs sm:text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-cyan-500 transition leading-relaxed resize-none shadow-inner"
+              className="w-full p-4 surface-card border-theme rounded-2xl text-xs sm:text-sm text-primary placeholder:text-secondary focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/40 transition leading-relaxed resize-none shadow-sm"
             />
           </div>
 
