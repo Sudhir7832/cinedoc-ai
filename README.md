@@ -90,6 +90,22 @@ npm run migrate:supabase
 
 The service role key is server-only and must never use a `NEXT_PUBLIC_` prefix.
 
+### Private R2 Media
+
+Generated videos and thumbnails use authenticated `/api/media/jobs/...` routes. Keep the R2 bucket private and disable its public `r2.dev` development URL or public custom domain. Showcase media uses the `showcase/` prefix and is intentionally available through the public media proxy.
+
+### Dodo Payments
+
+For an existing Supabase database, run `data/supabase-dodo-migration.sql` once. Then in **Admin → Settings**:
+
+1. Enable Dodo Payments and select test or live mode.
+2. Add the Dodo API key and Standard Webhooks signing key.
+3. Add a Dodo one-time product ID to each pricing pack.
+4. Register `https://your-domain.com/api/webhooks/dodo` in Dodo Dashboard.
+5. Subscribe to `payment.succeeded`, `payment.failed`, and `payment.cancelled`.
+
+Razorpay remains the INR checkout option. Dodo and Stripe are displayed for USD checkout.
+
 ### Admin Settings Panel
 Administrators can change provider keys, models, pricing, credit rules, and narration defaults from the control panel without restarting the application.
 

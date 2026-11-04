@@ -62,6 +62,7 @@ export class JobManager {
 
     const job: DocumentaryJob = {
       id,
+      mediaToken: crypto.randomBytes(16).toString('hex'),
       topic,
       customScript: input.customScript?.trim(),
       durationMinutes,

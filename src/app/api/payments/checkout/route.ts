@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { packId, gateway = 'test', currency = 'USD' } = body;
 
-    if (!['test', 'stripe', 'razorpay'].includes(gateway)) {
+    if (!['test', 'stripe', 'razorpay', 'dodo'].includes(gateway)) {
       return NextResponse.json({ success: false, error: 'Invalid payment gateway.' }, { status: 400 });
     }
     if (!['USD', 'INR'].includes(currency)) {
@@ -122,7 +122,41 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 3. Razorpay Orders Integration
+    // 3. Dodo Payments hosted checkout
+    if (gateway === 'dodo') {
+      if (!settings.enableDodo) return NextResponse.json({ success: false, error: 'Dodo Payments is currently paused.' }, { status: 503 });
+      if (!settings.dodoApiKey) return NextResponse.json({ success: false, error: 'Dodo Payments API key is not configured.' }, { status: 400 });
+      if (!pack.dodoProductId) return NextResponse.json({ success: false, error: `Dodo product ID is missing for ${pack.name}.` }, { status: 400 });
+
+      const pending = await DbManager.recordTransaction({
+        userId: user.id, userEmail: user.email, packId: pack.id, packName: pack.name, amount,
+        currency, creditsAdded: 0, gateway: 'dodo', status: 'pending', paymentId: `dodo_pending_${Date.now()}`,
+      });
+      const endpoint = settings.dodoMode === 'live' ? 'https://live.dodopayments.com/checkouts' : 'https://test.dodopayments.com/checkouts';
+      const dodoResponse = await fetch(endpoint, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${settings.dodoApiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          product_cart: [{ product_id: pack.dodoProductId, quantity: 1 }],
+          customer: { email: user.email, name: user.name },
+          billing_currency: currency,
+          allowed_payment_method_types: ['credit', 'debit', 'apple_pay', 'google_pay'],
+          return_url: `${req.nextUrl.origin}/?payment=success&gateway=dodo`,
+          cancel_url: `${req.nextUrl.origin}/?payment=cancelled&gateway=dodo`,
+          metadata: { transaction_id: pending.id, user_id: user.id, pack_id: pack.id, credits: pack.credits },
+          feature_flags: { redirect_immediately: true },
+        }),
+      });
+      const dodo = await dodoResponse.json();
+      if (!dodoResponse.ok || !dodo.checkout_url) {
+        await DbManager.markTransactionFailed(pending.id);
+        throw new Error(dodo.message || dodo.error?.message || 'Dodo checkout initialization failed.');
+      }
+      await DbManager.updateTransactionReference(pending.id, dodo.session_id, dodo.payment_id || undefined);
+      return NextResponse.json({ success: true, mode: 'dodo', checkoutUrl: dodo.checkout_url, sessionId: dodo.session_id });
+    }
+
+    // 4. Razorpay Orders Integration
     if (gateway === 'razorpay') {
       if (!settings.enableRazorpay) {
         return NextResponse.json({ success: false, error: 'Razorpay payments are currently paused.' }, { status: 503 });

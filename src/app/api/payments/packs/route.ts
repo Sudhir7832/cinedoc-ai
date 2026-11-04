@@ -20,6 +20,9 @@ export async function GET() {
       razorpayEnabled: settings.enableRazorpay,
       razorpayAvailable: Boolean(settings.enableRazorpay && settings.razorpayKeyId && settings.razorpayKeySecret),
       razorpayKeyId: settings.razorpayKeyId,
+      dodoEnabled: settings.enableDodo,
+      dodoAvailable: Boolean(settings.enableDodo && settings.dodoApiKey && settings.pricingPacks.some(pack => pack.dodoProductId)),
+      dodoMode: settings.dodoMode,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to load pricing packs';

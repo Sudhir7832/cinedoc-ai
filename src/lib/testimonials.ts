@@ -3,6 +3,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { TestimonialFormat, TestimonialVideo } from './types';
 import { getServiceSupabase } from './supabase/server';
+import { R2Storage } from './storage/r2';
 
 const PUBLIC_DIR = path.join(process.cwd(), 'public', 'testimonials');
 
@@ -31,6 +32,7 @@ export class TestimonialManager {
   }
 
   public static async create(input: {
+    id?: string;
     title: string;
     description: string;
     videoUrl: string;
@@ -42,7 +44,7 @@ export class TestimonialManager {
   }): Promise<TestimonialVideo> {
     const item: TestimonialVideo = {
       ...input,
-      id: `testimonial_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`,
+      id: input.id || `testimonial_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`,
       published: input.published !== false,
       createdAt: new Date().toISOString(),
     };
@@ -59,6 +61,7 @@ export class TestimonialManager {
     if (!item) return false;
     removeLocalAsset(item.videoUrl);
     removeLocalAsset(item.posterUrl);
+    await R2Storage.deletePrefix(`showcase/${id}/`);
     const { error: deleteError } = await getServiceSupabase().from('testimonials').delete().eq('id', id);
     if (deleteError) throw new Error(deleteError.message);
     return true;

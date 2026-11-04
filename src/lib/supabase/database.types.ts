@@ -30,6 +30,7 @@ export interface Database {
         id: string; welcome_credits: number; credits_per_scene: number; enable_test_mode: boolean;
         enable_stripe: boolean; enable_razorpay: boolean; stripe_publishable_key: string | null;
         stripe_secret_key: string | null; razorpay_key_id: string | null; razorpay_key_secret: string | null;
+        enable_dodo: boolean; dodo_api_key: string | null; dodo_webhook_key: string | null; dodo_mode: string;
         pricing_packs: Json; runtime_config: Json; updated_at: string;
       }>;
       testimonials: Table<{

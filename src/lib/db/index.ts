@@ -20,10 +20,14 @@ const DEFAULT_SETTINGS: SaasSettings = {
   enableTestMode: false,
   enableStripe: true,
   enableRazorpay: true,
+  enableDodo: false,
   stripePublishableKey: '',
   stripeSecretKey: '',
   razorpayKeyId: '',
   razorpayKeySecret: '',
+  dodoApiKey: '',
+  dodoWebhookKey: '',
+  dodoMode: 'test',
   pricingPacks: DEFAULT_PACKS,
 };
 
@@ -45,7 +49,7 @@ function transactionFromRow(row: TransactionRow): PaymentTransaction {
   return {
     id: String(row.id), userId: String(row.user_id), userEmail: String(row.user_email), packId: String(row.pack_id), packName: String(row.pack_name),
     amount: Number(row.amount), currency: row.currency === 'INR' ? 'INR' : 'USD', creditsAdded: Number(row.credits_added || 0),
-    gateway: row.gateway === 'razorpay' ? 'razorpay' : row.gateway === 'test' ? 'test' : 'stripe',
+    gateway: row.gateway === 'razorpay' ? 'razorpay' : row.gateway === 'dodo' ? 'dodo' : row.gateway === 'test' ? 'test' : 'stripe',
     status: row.status === 'completed' ? 'completed' : row.status === 'failed' ? 'failed' : 'pending',
     paymentId: row.payment_id ? String(row.payment_id) : undefined,
     providerPaymentId: row.provider_payment_id ? String(row.provider_payment_id) : undefined,
@@ -56,11 +60,19 @@ function transactionFromRow(row: TransactionRow): PaymentTransaction {
 function settingsFromRow(row: SettingsRow): SaasSettings {
   const creditsPerScene = Number(row.credits_per_scene || 1);
   const rawPacks = Array.isArray(row.pricing_packs) ? row.pricing_packs as unknown as PricingPack[] : DEFAULT_PACKS;
+  const runtimeConfig = row.runtime_config && typeof row.runtime_config === 'object' && !Array.isArray(row.runtime_config)
+    ? row.runtime_config as Record<string, unknown>
+    : {};
+  const dodoPayment = runtimeConfig.dodoPayment && typeof runtimeConfig.dodoPayment === 'object' && !Array.isArray(runtimeConfig.dodoPayment)
+    ? runtimeConfig.dodoPayment as Record<string, unknown>
+    : {};
   return {
     welcomeCredits: Number(row.welcome_credits || 10), creditsPerScene,
     enableTestMode: Boolean(row.enable_test_mode), enableStripe: row.enable_stripe !== false, enableRazorpay: row.enable_razorpay !== false,
+    enableDodo: Boolean(row.enable_dodo ?? dodoPayment.enableDodo),
     stripePublishableKey: String(row.stripe_publishable_key || ''), stripeSecretKey: String(row.stripe_secret_key || ''),
     razorpayKeyId: String(row.razorpay_key_id || ''), razorpayKeySecret: String(row.razorpay_key_secret || ''),
+    dodoApiKey: String(row.dodo_api_key || dodoPayment.apiKey || ''), dodoWebhookKey: String(row.dodo_webhook_key || dodoPayment.webhookKey || ''), dodoMode: (row.dodo_mode || dodoPayment.mode) === 'live' ? 'live' : 'test',
     pricingPacks: rawPacks.map(pack => ({ ...pack, videoMinutes: minutesForCredits(pack.credits, creditsPerScene) })),
   };
 }
@@ -188,6 +200,22 @@ export class DbManager {
     return (data || []).map(row => transactionFromRow(row));
   }
 
+  public static async getTransactionById(id: string): Promise<PaymentTransaction | null> {
+    const { data, error } = await getServiceSupabase().from('payment_transactions').select('*').eq('id', id).maybeSingle();
+    throwIfError(error);
+    return data ? transactionFromRow(data) : null;
+  }
+
+  public static async updateTransactionReference(id: string, paymentId: string, providerPaymentId?: string): Promise<void> {
+    const { error } = await getServiceSupabase().from('payment_transactions').update({ payment_id: paymentId, provider_payment_id: providerPaymentId }).eq('id', id);
+    throwIfError(error);
+  }
+
+  public static async markTransactionFailed(id: string): Promise<void> {
+    const { error } = await getServiceSupabase().from('payment_transactions').update({ status: 'failed' }).eq('id', id).neq('status', 'completed');
+    throwIfError(error);
+  }
+
   public static async recordTransaction(tx: Omit<PaymentTransaction, 'id' | 'createdAt'>): Promise<PaymentTransaction> {
     const id = `tx_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
     const row = { id, user_id: tx.userId, user_email: tx.userEmail, pack_id: tx.packId, pack_name: tx.packName, amount: tx.amount, currency: tx.currency, credits_added: tx.creditsAdded, gateway: tx.gateway, status: tx.status, payment_id: tx.paymentId, provider_payment_id: tx.providerPaymentId };
@@ -245,6 +273,26 @@ export class DbManager {
     if (updates.stripeSecretKey !== undefined) payload.stripe_secret_key = updates.stripeSecretKey;
     if (updates.razorpayKeyId !== undefined) payload.razorpay_key_id = updates.razorpayKeyId;
     if (updates.razorpayKeySecret !== undefined) payload.razorpay_key_secret = updates.razorpayKeySecret;
+    if (updates.enableDodo !== undefined || updates.dodoApiKey !== undefined || updates.dodoWebhookKey !== undefined || updates.dodoMode !== undefined) {
+      const { data: currentRow, error: currentError } = await getServiceSupabase().from('saas_settings').select('runtime_config').eq('id', 'global_config').single();
+      throwIfError(currentError);
+      const runtime = currentRow?.runtime_config && typeof currentRow.runtime_config === 'object' && !Array.isArray(currentRow.runtime_config)
+        ? currentRow.runtime_config as Record<string, unknown>
+        : {};
+      const existingDodo = runtime.dodoPayment && typeof runtime.dodoPayment === 'object' && !Array.isArray(runtime.dodoPayment)
+        ? runtime.dodoPayment as Record<string, unknown>
+        : {};
+      payload.runtime_config = {
+        ...runtime,
+        dodoPayment: {
+          ...existingDodo,
+          enableDodo: updates.enableDodo ?? existingDodo.enableDodo ?? false,
+          apiKey: updates.dodoApiKey ?? existingDodo.apiKey ?? '',
+          webhookKey: updates.dodoWebhookKey ?? existingDodo.webhookKey ?? '',
+          mode: updates.dodoMode ?? existingDodo.mode ?? 'test',
+        },
+      } as unknown as Json;
+    }
     if (updates.pricingPacks !== undefined) payload.pricing_packs = updates.pricingPacks as unknown as Json;
     const { data, error } = await getServiceSupabase().from('saas_settings').update(payload).eq('id', 'global_config').select('*').single();
     throwIfError(error);

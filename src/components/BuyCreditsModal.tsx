@@ -36,7 +36,7 @@ interface RazorpayConstructor {
   new (options: Record<string, unknown>): RazorpayInstance;
 }
 
-type PaymentGateway = 'test' | 'stripe' | 'razorpay';
+type PaymentGateway = 'test' | 'stripe' | 'razorpay' | 'dodo';
 
 export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpenAuth }: BuyCreditsModalProps) {
   const [packs, setPacks] = useState<PricingPack[]>([]);
@@ -46,6 +46,7 @@ export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpe
   const [testModeEnabled, setTestModeEnabled] = useState(false);
   const [stripeAvailable, setStripeAvailable] = useState(false);
   const [razorpayAvailable, setRazorpayAvailable] = useState(false);
+  const [dodoAvailable, setDodoAvailable] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -60,15 +61,17 @@ export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpe
         const nextPacks = data.packs || [];
         const hasStripe = Boolean(data.stripeAvailable);
         const hasRazorpay = Boolean(data.razorpayAvailable);
+        const hasDodo = Boolean(data.dodoAvailable);
         const canUseSandbox = Boolean(data.enableTestMode) && user?.role === 'admin';
         setPacks(nextPacks);
         setTestModeEnabled(Boolean(data.enableTestMode));
         setStripeAvailable(hasStripe);
         setRazorpayAvailable(hasRazorpay);
+        setDodoAvailable(hasDodo);
         setSelectedPackId(current => nextPacks.some((pack: PricingPack) => pack.id === current)
           ? current
           : nextPacks[0]?.id || current);
-        setGateway(canUseSandbox ? 'test' : hasStripe ? 'stripe' : hasRazorpay ? 'razorpay' : 'stripe');
+        setGateway(canUseSandbox ? 'test' : hasDodo ? 'dodo' : hasStripe ? 'stripe' : hasRazorpay ? 'razorpay' : 'stripe');
       })
       .catch(() => setError('Pricing could not be loaded. Please try again.'));
   }, [isOpen, user?.role]);
@@ -78,7 +81,7 @@ export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpe
   const selectedPack = packs.find(pack => pack.id === selectedPackId) || packs[0];
   const availableCredits = user?.availableCredits ?? user?.credits ?? 0;
   const sandboxAvailable = testModeEnabled && user?.role === 'admin';
-  const hasPaymentMethod = sandboxAvailable || stripeAvailable || razorpayAvailable;
+  const hasPaymentMethod = sandboxAvailable || (currency === 'USD' ? (stripeAvailable || dodoAvailable) : razorpayAvailable);
 
   const handleCheckout = async () => {
     if (!user) {
@@ -109,6 +112,10 @@ export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpe
       }
 
       if (data.mode === 'stripe' && data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+        return;
+      }
+      if (data.mode === 'dodo' && data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
         return;
       }
@@ -195,7 +202,11 @@ export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpe
                 <button
                   type="button"
                   key={option}
-                  onClick={() => setCurrency(option)}
+                  onClick={() => {
+                    setCurrency(option);
+                    if (option === 'INR') setGateway(razorpayAvailable ? 'razorpay' : 'test');
+                    if (option === 'USD' && gateway === 'razorpay') setGateway(dodoAvailable ? 'dodo' : 'stripe');
+                  }}
                   className={`min-h-9 rounded-lg px-3 text-xs font-bold transition-colors ${currency === option ? 'bg-[var(--app-text)] text-[var(--app-surface)]' : 'text-secondary hover:text-[var(--app-text)]'}`}
                   aria-pressed={currency === option}
                 >
@@ -255,12 +266,17 @@ export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpe
                     <Sparkles className="h-4 w-4 text-[var(--app-accent)]" aria-hidden="true" /> Admin sandbox
                   </button>
                 )}
-                {stripeAvailable && (
+                {stripeAvailable && currency === 'USD' && (
                   <button type="button" onClick={() => setGateway('stripe')} className={`btn-secondary !text-xs ${gateway === 'stripe' ? '!border-[var(--app-accent)] !bg-[var(--app-surface-soft)]' : ''}`} aria-pressed={gateway === 'stripe'}>
                     <CreditCard className="h-4 w-4 text-[var(--app-accent)]" aria-hidden="true" /> Stripe
                   </button>
                 )}
-                {razorpayAvailable && (
+                {dodoAvailable && currency === 'USD' && (
+                  <button type="button" onClick={() => setGateway('dodo')} className={`btn-secondary !text-xs ${gateway === 'dodo' ? '!border-[var(--app-brand)] !bg-[var(--app-brand-soft)]' : ''}`} aria-pressed={gateway === 'dodo'}>
+                    <ShieldCheck className="h-4 w-4 brand-text" aria-hidden="true" /> Dodo Payments
+                  </button>
+                )}
+                {razorpayAvailable && currency === 'INR' && (
                   <button type="button" onClick={() => setGateway('razorpay')} className={`btn-secondary !text-xs ${gateway === 'razorpay' ? '!border-[var(--app-accent)] !bg-[var(--app-surface-soft)]' : ''}`} aria-pressed={gateway === 'razorpay'}>
                     <ShieldCheck className="h-4 w-4 text-[var(--app-accent)]" aria-hidden="true" /> Razorpay
                   </button>

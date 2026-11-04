@@ -170,6 +170,16 @@ export class FFmpegRenderer {
       throw new Error(`Video rendering finished, but validation failed: ${validation.error}`);
     }
 
+    const thumbnailPath = path.join(jobDir, 'thumbnail.jpg');
+    try {
+      const seekSeconds = Math.max(0.5, Math.min(2, (validation.durationSeconds || 2) / 3));
+      const thumbnailSize = isVertical ? '540:960' : '960:540';
+      await execAsync(`ffmpeg -y -ss ${seekSeconds.toFixed(2)} -i "${finalMp4Path}" -frames:v 1 -vf "scale=${thumbnailSize}:force_original_aspect_ratio=increase,crop=${thumbnailSize}" -q:v 2 "${thumbnailPath}"`);
+      job.thumbnailPath = thumbnailPath;
+    } catch (thumbnailError) {
+      console.warn('[Thumbnail] Final video thumbnail generation failed:', thumbnailError);
+    }
+
     // Clean up temporary render folder
     try {
       if (fs.existsSync(tempDir)) {
@@ -183,8 +193,10 @@ export class FFmpegRenderer {
       try {
         job.progress.stepLabel = 'Uploading video to Cloudflare R2 storage...';
         if (onProgressUpdate) await onProgressUpdate(job);
-        const { videoUrl } = await R2Storage.uploadJobVideo(job.id, finalMp4Path);
+        const { videoUrl, srtUrl, thumbnailUrl } = await R2Storage.uploadJobVideo(job.id, finalMp4Path, job.thumbnailPath, job.mediaToken);
         job.videoUrl = videoUrl;
+        if (srtUrl) job.subtitlesUrl = srtUrl;
+        if (thumbnailUrl) job.thumbnailUrl = thumbnailUrl;
       } catch (r2Err) {
         console.error('[R2Storage] Upload error, falling back to local URL:', r2Err);
         job.videoUrl = `/generated/${job.id}/documentary.mp4`;

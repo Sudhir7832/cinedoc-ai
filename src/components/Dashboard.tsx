@@ -73,7 +73,7 @@ export function Dashboard({
   const inProgressCount = jobs.filter(job => !['completed', 'failed'].includes(job.status)).length;
   const latestVisualJob = jobs.find(job => job.scenes?.[0]?.imagePath);
   const latestVisual = latestVisualJob
-    ? scenePreviewUrl(latestVisualJob.id, latestVisualJob.scenes[0].sceneNumber, latestVisualJob.scenes[0].imageUpdatedAt || latestVisualJob.updatedAt)
+    ? latestVisualJob.thumbnailUrl || scenePreviewUrl(latestVisualJob.id, latestVisualJob.scenes[0].sceneNumber, latestVisualJob.scenes[0].imageUpdatedAt || latestVisualJob.updatedAt)
     : undefined;
 
   const handlePromptSubmit = (event: React.FormEvent) => {
@@ -259,9 +259,9 @@ export function Dashboard({
                 {jobs.map(job => {
                   const completed = job.status === 'completed';
                   const failed = job.status === 'failed';
-                  const image = job.scenes?.[0]?.imagePath
+                  const image = job.thumbnailUrl || (job.scenes?.[0]?.imagePath
                     ? scenePreviewUrl(job.id, job.scenes[0].sceneNumber, job.scenes[0].imageUpdatedAt || job.updatedAt)
-                    : undefined;
+                    : undefined);
                   const openJob = () => completed ? onPreviewVideo(job) : onSelectJob(job.id);
                   return (
                     <article key={job.id} className="surface-card group overflow-hidden rounded-3xl transition-[border-color,box-shadow] duration-200 hover:border-[var(--app-brand)] hover:shadow-[var(--app-shadow-md)]">

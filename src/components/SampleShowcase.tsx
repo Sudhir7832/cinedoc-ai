@@ -1,67 +1,371 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Film, Quote, RectangleHorizontal, Smartphone, Sparkles } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { 
+  Play, 
+  Heart, 
+  Sparkles, 
+  Smartphone, 
+  RectangleHorizontal, 
+  X, 
+  Search,
+  Volume2,
+  VolumeX,
+  Share2
+} from 'lucide-react';
 import { TestimonialVideo } from '@/lib/types';
 
 const FALLBACK_TESTIMONIALS: TestimonialVideo[] = [
   {
     id: 'fallback-moon-to-mars',
-    title: 'Moon to Mars: India’s Space Journey',
-    description: 'A cinematic account of Chandrayaan and Mangalyaan.',
+    title: 'Moon to Mars: India’s Journey',
+    description: 'A cinematic account of Chandrayaan and deep space exploration.',
     videoUrl: '/samples/isro-moon-to-mars.mp4',
     posterUrl: '/samples/isro-moon-to-mars.webp',
     format: 'landscape',
-    quote: 'The pilot gave us a complete first cut with clear narrative direction and synchronized production.',
-    attribution: 'Creator pilot review',
+    attribution: 'Creator Pilot',
     published: true,
     createdAt: '2026-10-29T16:00:00.000Z',
   },
 ];
 
+// Helper to generate consistent like counts based on ID
+function getLikeCount(id: string): number {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash << 5) - hash + id.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash % 450) + 24;
+}
+
+// Helper to generate consistent avatar gradient from creator name
+function getAvatarColor(name: string): string {
+  const gradients = [
+    'from-rose-500 to-amber-500',
+    'from-indigo-500 to-purple-600',
+    'from-cyan-500 to-blue-600',
+    'from-emerald-500 to-teal-600',
+    'from-fuchsia-500 to-pink-600',
+    'from-amber-500 to-orange-600',
+  ];
+  let sum = 0;
+  for (let i = 0; i < name.length; i++) sum += name.charCodeAt(i);
+  return gradients[sum % gradients.length];
+}
+
 export function SampleShowcase() {
   const [items, setItems] = useState<TestimonialVideo[]>(FALLBACK_TESTIMONIALS);
+  const [activeTab, setActiveTab] = useState<'recommended' | 'reels' | 'landscape' | 'all'>('recommended');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedVideo, setSelectedVideo] = useState<TestimonialVideo | null>(null);
+  const [likedIds, setLikedIds] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     fetch('/api/testimonials')
       .then(response => response.json())
       .then(data => {
-        if (data.success && Array.isArray(data.testimonials) && data.testimonials.length > 0) setItems(data.testimonials);
+        if (data.success && Array.isArray(data.testimonials) && data.testimonials.length > 0) {
+          setItems(data.testimonials);
+        }
       })
       .catch(() => undefined);
   }, []);
 
+  const handleToggleLike = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setLikedIds(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  // Filter items based on active tab and search
+  const filteredItems = items.filter(item => {
+    const isReel = item.format === 'reels' || item.format === 'tiktok';
+    if (activeTab === 'reels' && !isReel) return false;
+    if (activeTab === 'landscape' && isReel) return false;
+    
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const matchTitle = (item.title || '').toLowerCase().includes(q);
+      const matchAttr = (item.attribution || '').toLowerCase().includes(q);
+      const matchDesc = (item.description || '').toLowerCase().includes(q);
+      if (!matchTitle && !matchAttr && !matchDesc) return false;
+    }
+
+    return true;
+  });
+
   return (
-    <section className="space-y-5" aria-labelledby="sample-films-title">
+    <section className="space-y-6 pt-4" aria-labelledby="sample-films-title">
+      {/* Top Header & Eyebrow */}
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div>
-          <p className="eyebrow">Creator showcase</p>
-          <h2 id="sample-films-title" className="mt-2 text-2xl font-black tracking-[-0.045em] text-primary sm:text-3xl">Creator stories in every screen format.</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-secondary">Watch managed showcase videos from documentary masters, vertical Reels, and TikTok-ready productions.</p>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-xs text-cyan-600 dark:text-cyan-400 font-bold mb-2">
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>AI Reel & Video Showcase</span>
+          </div>
+          <h2 id="sample-films-title" className="text-2xl font-black tracking-[-0.04em] text-primary sm:text-3xl">
+            Explore Creator Productions
+          </h2>
+          <p className="mt-1 text-xs sm:text-sm text-secondary max-w-xl">
+            Browse short-form 9:16 vertical reels, cinema documentaries, and stories generated by creators.
+          </p>
         </div>
-        <span className="brand-soft flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.12em]"><Sparkles className="h-3.5 w-3.5" /> Creator results</span>
       </div>
 
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-        {items.map(item => {
-          const vertical = item.format === 'reels' || item.format === 'tiktok';
-          const FormatIcon = vertical ? Smartphone : RectangleHorizontal;
-          return (
-            <article key={item.id} className="surface-card overflow-hidden rounded-3xl">
-              <div className={`${vertical ? 'mx-auto aspect-[9/16] max-h-[560px] max-w-[315px]' : 'aspect-video'} bg-black`}>
-                <video controls playsInline preload="metadata" poster={item.posterUrl} className="h-full w-full object-cover" aria-label={`Watch ${item.title}`}>
-                  <source src={item.videoUrl} />Your browser does not support embedded video.
-                </video>
-              </div>
-              <div className="p-5">
-                <div className="flex items-start justify-between gap-3"><div><h3 className="text-sm font-extrabold text-primary">{item.title}</h3><p className="mt-1 text-xs leading-5 text-secondary">{item.description}</p></div><span className="brand-soft flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[9px] font-extrabold uppercase"><FormatIcon className="h-3 w-3" />{item.format}</span></div>
-                {item.quote && <blockquote className="mt-4 border-t border-theme pt-4 text-xs font-semibold leading-5 text-primary"><Quote className="mb-2 h-4 w-4 brand-text" />“{item.quote}”{item.attribution && <cite className="mt-2 block text-[10px] font-medium not-italic text-secondary">{item.attribution}</cite>}</blockquote>}
-                <div className="mt-4 flex items-center gap-2 border-t border-theme pt-3 text-[10px] font-semibold text-secondary"><Film className="h-3.5 w-3.5 brand-text" /> Published creator showcase</div>
-              </div>
-            </article>
-          );
-        })}
+      {/* Kling-Style Navigation Filter & Search Bar */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-1.5 surface-soft rounded-2xl border-theme">
+        {/* Filter Pills */}
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
+          {[
+            { id: 'recommended', label: 'Recommended' },
+            { id: 'reels', label: 'Reels & Shorts' },
+            { id: 'landscape', label: 'Landscape' },
+            { id: 'all', label: 'All Videos' },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id as typeof activeTab)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+                activeTab === tab.id
+                  ? 'bg-[var(--app-surface)] text-primary shadow-sm border border-theme'
+                  : 'text-secondary hover:text-primary hover:bg-[var(--app-surface)]/50'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Search Input */}
+        <div className="relative min-w-[200px] sm:max-w-xs">
+          <Search className="w-3.5 h-3.5 text-secondary absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search reels or creators..."
+            className="w-full pl-8 pr-3 py-1.5 surface-card border-theme rounded-xl text-xs text-primary placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-cyan-500 transition"
+          />
+        </div>
       </div>
+
+      {/* Modern 9:16 Video Showcase Grid (Like Kling AI / Explore Feed) */}
+      {filteredItems.length === 0 ? (
+        <div className="surface-soft rounded-3xl p-12 text-center text-secondary border-theme">
+          <Smartphone className="w-8 h-8 mx-auto mb-2 opacity-40" />
+          <p className="text-sm font-semibold">No showcase reels found matching this filter.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3 sm:gap-4">
+          {filteredItems.map(item => (
+            <ShowcaseCard
+              key={item.id}
+              item={item}
+              isLiked={Boolean(likedIds[item.id])}
+              onToggleLike={(e) => handleToggleLike(e, item.id)}
+              onOpenModal={() => setSelectedVideo(item)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Fullscreen Video Lightbox Modal */}
+      {selectedVideo && (
+        <ShowcaseModal
+          item={selectedVideo}
+          isLiked={Boolean(likedIds[selectedVideo.id])}
+          onToggleLike={(e) => handleToggleLike(e, selectedVideo.id)}
+          onClose={() => setSelectedVideo(null)}
+        />
+      )}
     </section>
+  );
+}
+
+// Individual 9:16 Showcase Card
+function ShowcaseCard({
+  item,
+  isLiked,
+  onToggleLike,
+  onOpenModal,
+}: {
+  item: TestimonialVideo;
+  isLiked: boolean;
+  onToggleLike: (e: React.MouseEvent) => void;
+  onOpenModal: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const isVertical = item.format === 'reels' || item.format === 'tiktok';
+  const creatorName = item.attribution || item.title.split(' ')[0] || 'Creator';
+  const baseLikes = getLikeCount(item.id);
+  const currentLikes = isLiked ? baseLikes + 1 : baseLikes;
+
+  const handleMouseEnter = () => {
+    if (videoRef.current) {
+      videoRef.current.play().catch(() => undefined);
+      setIsPlaying(true);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+      setIsPlaying(false);
+    }
+  };
+
+  return (
+    <div
+      onClick={onOpenModal}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      className="group relative aspect-[9/16] w-full rounded-2xl sm:rounded-3xl overflow-hidden bg-black border border-theme shadow-md hover:shadow-2xl hover:scale-[1.02] cursor-pointer transition-all duration-300 select-none"
+    >
+      {/* Video Element */}
+      <video
+        ref={videoRef}
+        src={item.videoUrl}
+        poster={item.posterUrl}
+        playsInline
+        muted
+        loop
+        preload="metadata"
+        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+      />
+
+      {/* Top Left Play Icon Pill */}
+      <div className="absolute top-2.5 left-2.5 z-10">
+        <div className="h-7 w-7 rounded-full bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-sm transition group-hover:bg-white group-hover:text-black">
+          <Play className="h-3.5 w-3.5 fill-current ml-0.5" />
+        </div>
+      </div>
+
+      {/* Top Right Format Badge */}
+      <div className="absolute top-2.5 right-2.5 z-10">
+        <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white/90 uppercase tracking-wider">
+          {item.format}
+        </span>
+      </div>
+
+      {/* Bottom Gradient Overlay with Creator & Likes (Kling style) */}
+      <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/95 via-black/60 to-transparent p-3 sm:p-3.5 pt-10 flex flex-col justify-end">
+        {/* Title */}
+        <p className="text-xs sm:text-sm font-bold text-white leading-snug line-clamp-2 drop-shadow-sm mb-2">
+          {item.title}
+        </p>
+
+        {/* Creator Info & Like Button */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <div className={`w-5 h-5 rounded-full bg-gradient-to-br ${getAvatarColor(creatorName)} flex items-center justify-center text-[10px] font-extrabold text-white shrink-0 shadow-inner`}>
+              {creatorName.charAt(0).toUpperCase()}
+            </div>
+            <span className="text-[11px] font-medium text-white/90 truncate drop-shadow-sm">
+              {creatorName}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={onToggleLike}
+            className="flex items-center gap-1 text-[11px] font-semibold text-white/90 hover:text-white transition shrink-0"
+            title="Like reel"
+          >
+            <Heart className={`w-3.5 h-3.5 transition ${isLiked ? 'text-rose-500 fill-rose-500 scale-110' : 'text-white/80'}`} />
+            <span>{currentLikes}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Modal Video Lightbox for full playback
+function ShowcaseModal({
+  item,
+  isLiked,
+  onToggleLike,
+  onClose,
+}: {
+  item: TestimonialVideo;
+  isLiked: boolean;
+  onToggleLike: (e: React.MouseEvent) => void;
+  onClose: () => void;
+}) {
+  const isVertical = item.format === 'reels' || item.format === 'tiktok';
+  const creatorName = item.attribution || 'Creator Showcase';
+  const baseLikes = getLikeCount(item.id);
+  const currentLikes = isLiked ? baseLikes + 1 : baseLikes;
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div 
+        className="relative max-h-[92vh] w-full max-w-lg rounded-3xl overflow-hidden bg-black border border-white/10 shadow-2xl flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          className="absolute top-3.5 right-3.5 z-20 h-9 w-9 rounded-full bg-black/70 hover:bg-black text-white flex items-center justify-center border border-white/20 transition shadow-lg"
+          aria-label="Close"
+        >
+          <X className="w-4 h-4" />
+        </button>
+
+        {/* Video Player */}
+        <div className={`w-full bg-black flex items-center justify-center ${isVertical ? 'aspect-[9/16] max-h-[72vh]' : 'aspect-video'}`}>
+          <video
+            src={item.videoUrl}
+            poster={item.posterUrl}
+            controls
+            autoPlay
+            playsInline
+            className="h-full w-full object-contain"
+          />
+        </div>
+
+        {/* Bottom Details Footer */}
+        <div className="p-4 sm:p-5 bg-gradient-to-b from-gray-950 to-black border-t border-white/10 flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <h3 className="text-sm sm:text-base font-extrabold text-white truncate">{item.title}</h3>
+            {item.description && (
+              <p className="text-xs text-gray-400 line-clamp-1 mt-0.5">{item.description}</p>
+            )}
+            <p className="text-[11px] text-cyan-400 font-semibold mt-1 flex items-center gap-1.5">
+              <span>By {creatorName}</span>
+              <span>·</span>
+              <span className="uppercase">{item.format}</span>
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onToggleLike}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-bold transition shrink-0 ${
+              isLiked 
+                ? 'bg-rose-500/15 border-rose-500 text-rose-400' 
+                : 'bg-white/10 border-white/15 text-white hover:bg-white/20'
+            }`}
+          >
+            <Heart className={`w-4 h-4 ${isLiked ? 'fill-rose-500 text-rose-500' : ''}`} />
+            <span>{currentLikes}</span>
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

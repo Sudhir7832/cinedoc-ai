@@ -3,6 +3,7 @@ import fs from 'fs';
 import { DocumentaryJob, SceneItem } from '../types';
 import { StorageManager } from '../storage';
 import { OpenRouterClient } from './client';
+import { R2Storage } from '../storage/r2';
 
 const KIDS_IMAGE_DIRECTION = {
   educational: 'colorful children\'s educational storybook illustration, clear visual concepts, friendly guides, rounded shapes, bright balanced colors',
@@ -66,6 +67,7 @@ export class ImageGenerator {
         const existingFilePath = path.join(imagesDir, existingFilename);
         scene.imagePath = `/generated/${job.id}/images/${existingFilename}`;
         scene.imageUpdatedAt = fs.statSync(existingFilePath).mtime.toISOString();
+        await this.publishGeneratingThumbnail(job, scene, existingFilePath);
         scene.imageStatus = 'completed';
         scene.error = undefined;
         job.progress.imagesCompleted = job.scenes.filter(s => s.imageStatus === 'completed').length;
@@ -92,6 +94,7 @@ export class ImageGenerator {
           if (buffer && buffer.length > 1000) {
             scene.imagePath = StorageManager.saveImageFile(job.id, scene.sceneNumber, buffer);
             scene.imageUpdatedAt = new Date().toISOString();
+            await this.publishGeneratingThumbnail(job, scene, path.join(imagesDir, path.basename(scene.imagePath)));
             scene.imageStatus = 'completed';
             scene.error = undefined;
             job.progress.imagesCompleted = job.scenes.filter(s => s.imageStatus === 'completed').length;
@@ -115,6 +118,7 @@ export class ImageGenerator {
           if (buf && buf.length > 1000) {
             scene.imagePath = StorageManager.saveImageFile(job.id, scene.sceneNumber, buf);
             scene.imageUpdatedAt = new Date().toISOString();
+            await this.publishGeneratingThumbnail(job, scene, path.join(imagesDir, path.basename(scene.imagePath)));
             scene.imageStatus = 'completed';
             scene.error = undefined;
             job.progress.imagesCompleted = job.scenes.filter(s => s.imageStatus === 'completed').length;
@@ -133,6 +137,7 @@ export class ImageGenerator {
           const { buffer, cost } = await OpenRouterClient.generateImage(styledPrompt, undefined, job.aspectRatio || '16:9');
           scene.imagePath = StorageManager.saveImageFile(job.id, scene.sceneNumber, buffer);
           scene.imageUpdatedAt = new Date().toISOString();
+          await this.publishGeneratingThumbnail(job, scene, path.join(imagesDir, path.basename(scene.imagePath)));
           scene.imageStatus = 'completed';
           scene.error = undefined;
           success = true;
@@ -166,6 +171,7 @@ export class ImageGenerator {
                 if (buf && buf.length > 1000) {
                   scene.imagePath = StorageManager.saveImageFile(job.id, scene.sceneNumber, buf);
                   scene.imageUpdatedAt = new Date().toISOString();
+                  await this.publishGeneratingThumbnail(job, scene, path.join(imagesDir, path.basename(scene.imagePath)));
                   scene.imageStatus = 'completed';
                   scene.error = undefined;
                   success = true;
@@ -180,6 +186,7 @@ export class ImageGenerator {
             await this.generateCinematicSceneImage(job.id, scene, job.topic, job.contentStyle || 'documentary', job.kidsFormat || 'entertainment', job.aspectRatio || '16:9');
             scene.imagePath = `/generated/${job.id}/images/${filename}`;
             scene.imageUpdatedAt = new Date().toISOString();
+            await this.publishGeneratingThumbnail(job, scene, path.join(imagesDir, filename));
             scene.imageStatus = 'completed';
             scene.error = undefined;
             success = true;
@@ -215,6 +222,20 @@ export class ImageGenerator {
     }
 
     return job;
+  }
+
+  private static async publishGeneratingThumbnail(job: DocumentaryJob, scene: SceneItem, localPath: string): Promise<void> {
+    if (scene.sceneNumber !== 1 || job.thumbnailUrl || !R2Storage.isConfigured() || !fs.existsSync(localPath)) return;
+    const extension = path.extname(localPath).toLowerCase().replace('.', '') || 'jpg';
+    const contentType = extension === 'png' ? 'image/png' : extension === 'webp' ? 'image/webp' : 'image/jpeg';
+    try {
+      const prefix = job.mediaToken ? `jobs/${job.id}/${job.mediaToken}` : `jobs/${job.id}`;
+      const result = await R2Storage.uploadFile(localPath, `${prefix}/thumbnail.${extension}`, contentType);
+      job.thumbnailUrl = result.url;
+      job.thumbnailPath = localPath;
+    } catch (error) {
+      console.warn(`[Thumbnail] Could not publish generating thumbnail for ${job.id}:`, error);
+    }
   }
 
   public static async generateCinematicSceneImage(

@@ -36,7 +36,7 @@ create table if not exists public.payment_transactions (
   amount numeric(10,2) not null,
   currency text not null check (currency in ('USD', 'INR')),
   credits_added integer not null default 0,
-  gateway text not null check (gateway in ('stripe', 'razorpay', 'test')),
+  gateway text not null check (gateway in ('stripe', 'razorpay', 'dodo', 'test')),
   status text not null default 'pending' check (status in ('completed', 'pending', 'failed')),
   payment_id text,
   provider_payment_id text,
@@ -44,6 +44,8 @@ create table if not exists public.payment_transactions (
 );
 create index if not exists idx_transactions_user on public.payment_transactions(user_id);
 create index if not exists idx_transactions_payment on public.payment_transactions(payment_id);
+alter table public.payment_transactions drop constraint if exists payment_transactions_gateway_check;
+alter table public.payment_transactions add constraint payment_transactions_gateway_check check (gateway in ('stripe', 'razorpay', 'dodo', 'test'));
 
 create table if not exists public.credit_ledger (
   id text primary key,
@@ -64,10 +66,14 @@ create table if not exists public.saas_settings (
   enable_test_mode boolean not null default false,
   enable_stripe boolean not null default true,
   enable_razorpay boolean not null default true,
+  enable_dodo boolean not null default false,
   stripe_publishable_key text default '',
   stripe_secret_key text default '',
   razorpay_key_id text default '',
   razorpay_key_secret text default '',
+  dodo_api_key text default '',
+  dodo_webhook_key text default '',
+  dodo_mode text not null default 'test' check (dodo_mode in ('test', 'live')),
   pricing_packs jsonb not null default '[]'::jsonb,
   runtime_config jsonb not null default '{}'::jsonb,
   updated_at timestamptz not null default now()
@@ -85,6 +91,11 @@ create table if not exists public.testimonials (
   published boolean not null default true,
   created_at timestamptz not null default now()
 );
+
+alter table public.saas_settings add column if not exists enable_dodo boolean not null default false;
+alter table public.saas_settings add column if not exists dodo_api_key text default '';
+alter table public.saas_settings add column if not exists dodo_webhook_key text default '';
+alter table public.saas_settings add column if not exists dodo_mode text not null default 'test';
 
 create or replace function public.is_admin(check_user uuid default auth.uid())
 returns boolean language sql stable security definer set search_path = public

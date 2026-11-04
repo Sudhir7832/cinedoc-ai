@@ -96,10 +96,12 @@ export async function POST(req: NextRequest) {
     if (typeof body.enableTestMode === 'boolean') settingsUpdates.enableTestMode = body.enableTestMode;
     if (typeof body.enableStripe === 'boolean') settingsUpdates.enableStripe = body.enableStripe;
     if (typeof body.enableRazorpay === 'boolean') settingsUpdates.enableRazorpay = body.enableRazorpay;
+    if (typeof body.enableDodo === 'boolean') settingsUpdates.enableDodo = body.enableDodo;
 
-    for (const key of ['stripePublishableKey', 'stripeSecretKey', 'razorpayKeyId', 'razorpayKeySecret'] as const) {
+    for (const key of ['stripePublishableKey', 'stripeSecretKey', 'razorpayKeyId', 'razorpayKeySecret', 'dodoApiKey', 'dodoWebhookKey'] as const) {
       if (typeof body[key] === 'string') settingsUpdates[key] = body[key];
     }
+    if (body.dodoMode === 'test' || body.dodoMode === 'live') settingsUpdates.dodoMode = body.dodoMode;
 
     if (Array.isArray(body.pricingPacks)) {
       const creditsPerScene = settingsUpdates.creditsPerScene || current.creditsPerScene;
@@ -120,6 +122,7 @@ export async function POST(req: NextRequest) {
           videoMinutes: minutesForCredits(credits, creditsPerScene),
           description: String(pack.description || '').trim().slice(0, 240),
           popular: Boolean(pack.popular),
+          dodoProductId: String(pack.dodoProductId || '').trim().slice(0, 100) || undefined,
         };
       });
     }

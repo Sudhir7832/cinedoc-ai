@@ -116,11 +116,61 @@ export function AdminTestimonialsPanel() {
       <section className="surface-card rounded-3xl p-5 sm:p-7">
         <div className="flex items-center justify-between gap-3"><div><h3 className="text-base font-extrabold text-primary">Published showcase</h3><p className="mt-1 text-xs text-secondary">{items.length} testimonial videos</p></div><button type="button" onClick={() => void loadItems()} className="icon-button" aria-label="Refresh testimonials"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /></button></div>
 
-        {loading && items.length === 0 ? <div className="py-16 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin brand-text" /></div> : items.length === 0 ? <p className="mt-5 rounded-2xl surface-soft p-8 text-center text-sm text-secondary">No testimonial videos published yet.</p> : (
-          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {loading && items.length === 0 ? (
+          <div className="py-16 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin brand-text" /></div>
+        ) : items.length === 0 ? (
+          <p className="mt-5 rounded-2xl surface-soft p-8 text-center text-sm text-secondary">No testimonial videos published yet.</p>
+        ) : (
+          <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
             {items.map(item => {
               const vertical = item.format === 'reels' || item.format === 'tiktok';
-              return <article key={item.id} className="surface-soft overflow-hidden rounded-2xl"><div className={`${vertical ? 'mx-auto aspect-[9/16] max-h-[440px] max-w-[248px]' : 'aspect-video'} bg-black`}><video controls playsInline preload="metadata" poster={item.posterUrl} className="h-full w-full object-cover"><source src={item.videoUrl} />Your browser does not support video.</video></div><div className="p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-extrabold text-primary">{item.title}</p><p className="mt-1 text-[10px] font-bold uppercase tracking-wide brand-text">{item.format}</p></div><button type="button" onClick={() => void handleDelete(item)} className="icon-button !h-10 !w-10 shrink-0 text-[var(--app-danger)]" aria-label={`Delete ${item.title}`}><Trash2 className="h-4 w-4" /></button></div>{item.description && <p className="mt-2 text-xs leading-5 text-secondary">{item.description}</p>}</div></article>;
+              return (
+                <div 
+                  key={item.id} 
+                  className={`group relative overflow-hidden rounded-2xl sm:rounded-3xl bg-black border border-theme shadow-md ${
+                    vertical ? 'aspect-[9/16]' : 'aspect-[9/16] sm:aspect-video'
+                  }`}
+                >
+                  <video 
+                    controls 
+                    playsInline 
+                    preload="metadata" 
+                    poster={item.posterUrl} 
+                    className="h-full w-full object-cover"
+                  >
+                    <source src={item.videoUrl} />
+                    Your browser does not support video.
+                  </video>
+
+                  {/* Top-Right Delete Action Button */}
+                  <div className="absolute top-2.5 right-2.5 z-20">
+                    <button 
+                      type="button" 
+                      onClick={() => void handleDelete(item)} 
+                      className="h-8 w-8 rounded-full bg-red-600/90 hover:bg-red-600 text-white flex items-center justify-center shadow-lg transition backdrop-blur-sm" 
+                      aria-label={`Delete ${item.title}`}
+                      title="Delete this reel from showcase"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Top-Left Format Badge */}
+                  <div className="absolute top-2.5 left-2.5 z-10 pointer-events-none">
+                    <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-white/90 uppercase border border-white/10 tracking-wider">
+                      {item.format}
+                    </span>
+                  </div>
+
+                  {/* Bottom Info Overlay */}
+                  <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/95 via-black/60 to-transparent p-3 pt-8 pointer-events-none">
+                    <p className="truncate text-xs font-bold text-white drop-shadow-sm">{item.title}</p>
+                    {item.attribution && (
+                      <p className="text-[10px] text-gray-300 truncate mt-0.5 font-medium">{item.attribution}</p>
+                    )}
+                  </div>
+                </div>
+              );
             })}
           </div>
         )}

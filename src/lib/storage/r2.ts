@@ -1,7 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
-import { Readable } from 'stream';
 
 let s3ClientInstance: S3Client | null = null;
 
@@ -43,14 +42,13 @@ export class R2Storage {
   }
 
   public static getPublicUrl(key: string): string {
-    const publicBase = process.env.R2_PUBLIC_URL?.trim();
-    if (publicBase) {
-      const cleanBase = publicBase.replace(/\/+$/, '');
-      const cleanKey = key.replace(/^\/+/, '');
-      return `${cleanBase}/${cleanKey}`;
-    }
-    // Fallback to internal media proxy route
     return `/api/media/${key.replace(/^\/+/, '')}`;
+  }
+
+  public static async uploadBuffer(buffer: Buffer, key: string, contentType: string): Promise<{ key: string; url: string }> {
+    const client = this.getClient();
+    await client.send(new PutObjectCommand({ Bucket: this.getBucketName(), Key: key, Body: buffer, ContentType: contentType }));
+    return { key, url: this.getPublicUrl(key) };
   }
 
   public static async uploadFile(
@@ -81,33 +79,45 @@ export class R2Storage {
 
   public static async uploadJobVideo(
     jobId: string,
-    localMp4Path: string
-  ): Promise<{ videoUrl: string; srtUrl?: string }> {
+    localMp4Path: string,
+    thumbnailPath?: string,
+    mediaToken?: string
+  ): Promise<{ videoUrl: string; srtUrl?: string; thumbnailUrl?: string }> {
     if (!this.isConfigured()) {
       throw new Error('Cloudflare R2 is not configured.');
     }
 
-    const videoKey = `jobs/${jobId}/documentary.mp4`;
+    const prefix = mediaToken ? `jobs/${jobId}/${mediaToken}` : `jobs/${jobId}`;
+    const videoKey = `${prefix}/documentary.mp4`;
     const { url: videoUrl } = await this.uploadFile(localMp4Path, videoKey, 'video/mp4');
 
     let srtUrl: string | undefined;
     const localSrtPath = path.join(path.dirname(localMp4Path), 'subtitles.srt');
     if (fs.existsSync(localSrtPath)) {
-      const srtKey = `jobs/${jobId}/subtitles.srt`;
+      const srtKey = `${prefix}/subtitles.srt`;
       const res = await this.uploadFile(localSrtPath, srtKey, 'text/plain; charset=utf-8');
       srtUrl = res.url;
     }
 
-    return { videoUrl, srtUrl };
+    let thumbnailUrl: string | undefined;
+    if (thumbnailPath && fs.existsSync(thumbnailPath)) {
+      const result = await this.uploadFile(thumbnailPath, `${prefix}/thumbnail.jpg`, 'image/jpeg');
+      thumbnailUrl = result.url;
+    }
+
+    return { videoUrl, srtUrl, thumbnailUrl };
   }
 
   public static async deleteJobFiles(jobId: string): Promise<void> {
     if (!this.isConfigured()) return;
+    await this.deletePrefix(`jobs/${jobId}/`);
+  }
+
+  public static async deletePrefix(prefix: string): Promise<void> {
+    if (!this.isConfigured()) return;
     try {
       const client = this.getClient();
       const bucket = this.getBucketName();
-      const prefix = `jobs/${jobId}/`;
-
       const listRes = await client.send(
         new ListObjectsV2Command({
           Bucket: bucket,
@@ -128,7 +138,7 @@ export class R2Storage {
         }
       }
     } catch (err) {
-      console.warn(`[R2Storage] Cleanup failed for job ${jobId}:`, err);
+      console.warn(`[R2Storage] Cleanup failed for prefix ${prefix}:`, err);
     }
   }
 
@@ -143,4 +153,3 @@ export class R2Storage {
     return await client.send(command);
   }
 }
-

@@ -65,6 +65,9 @@ export interface DocumentaryJob {
   scriptSummary?: string;
   videoUrl?: string;
   videoPath?: string;
+  thumbnailUrl?: string;
+  thumbnailPath?: string;
+  mediaToken?: string;
   subtitlesUrl?: string;
   subtitlesPath?: string;
   finalDurationSeconds?: number;
@@ -151,6 +154,7 @@ export interface PricingPack {
   description: string;
   popular?: boolean;
   videoMinutes: number;
+  dodoProductId?: string;
 }
 
 export interface PaymentTransaction {
@@ -162,7 +166,7 @@ export interface PaymentTransaction {
   amount: number;
   currency: 'USD' | 'INR';
   creditsAdded: number;
-  gateway: 'stripe' | 'razorpay' | 'test';
+  gateway: 'stripe' | 'razorpay' | 'dodo' | 'test';
   status: 'completed' | 'pending' | 'failed';
   paymentId?: string;
   providerPaymentId?: string;
@@ -203,9 +207,13 @@ export interface SaasSettings {
   enableTestMode: boolean;
   enableStripe: boolean;
   enableRazorpay: boolean;
+  enableDodo: boolean;
   stripePublishableKey?: string;
   stripeSecretKey?: string;
   razorpayKeyId?: string;
   razorpayKeySecret?: string;
+  dodoApiKey?: string;
+  dodoWebhookKey?: string;
+  dodoMode?: 'test' | 'live';
   pricingPacks: PricingPack[];
 }

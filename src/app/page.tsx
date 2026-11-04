@@ -148,9 +148,19 @@ export default function Home() {
     const params = new URLSearchParams(window.location.search);
     const payment = params.get('payment');
     const sessionId = params.get('session_id');
+    const paymentGateway = params.get('gateway');
 
     if (payment === 'cancelled') {
       window.setTimeout(() => setPaymentNotice('Checkout was cancelled. No credits were charged.'), 0);
+      window.history.replaceState({}, '', window.location.pathname);
+      return;
+    }
+    if (payment === 'success' && paymentGateway === 'dodo') {
+      window.setTimeout(() => {
+        setPaymentNotice('Dodo payment received. Credits will appear after secure webhook verification.');
+        void fetchUser();
+      }, 0);
+      window.setTimeout(() => void fetchUser(), 2500);
       window.history.replaceState({}, '', window.location.pathname);
       return;
     }

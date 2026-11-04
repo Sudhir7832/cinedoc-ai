@@ -76,10 +76,14 @@ export default function AdminPage() {
     enableTestMode: true,
     enableStripe: true,
     enableRazorpay: true,
+    enableDodo: false,
     stripePublishableKey: '',
     stripeSecretKey: '',
     razorpayKeyId: '',
     razorpayKeySecret: '',
+    dodoApiKey: '',
+    dodoWebhookKey: '',
+    dodoMode: 'test' as 'test' | 'live',
     // AI Provider & Model Controls
     imageProvider: 'cloudflare',
     cloudflareImageModel: '@cf/black-forest-labs/flux-1-schnell',
@@ -128,10 +132,14 @@ export default function AdminPage() {
           enableTestMode: settingsRes.settings.enableTestMode ?? true,
           enableStripe: settingsRes.settings.enableStripe ?? true,
           enableRazorpay: settingsRes.settings.enableRazorpay ?? true,
+          enableDodo: settingsRes.settings.enableDodo ?? false,
           stripePublishableKey: settingsRes.settings.stripePublishableKey || '',
           stripeSecretKey: settingsRes.settings.stripeSecretKey || '',
           razorpayKeyId: settingsRes.settings.razorpayKeyId || '',
           razorpayKeySecret: settingsRes.settings.razorpayKeySecret || '',
+          dodoApiKey: settingsRes.settings.dodoApiKey || '',
+          dodoWebhookKey: settingsRes.settings.dodoWebhookKey || '',
+          dodoMode: settingsRes.settings.dodoMode || 'test',
           imageProvider: rc.imageProvider || 'cloudflare',
           cloudflareImageModel: rc.cloudflareImageModel || '@cf/black-forest-labs/flux-1-schnell',
           imageModel: rc.imageModel || 'bytedance-seed/seedream-5-0-flash',
@@ -1135,6 +1143,16 @@ export default function AdminPage() {
                         />
                       </label>
 
+                      <label className="block text-[10px] font-semibold text-gray-500">
+                        Dodo product ID
+                        <input
+                          value={pack.dodoProductId || ''}
+                          onChange={(e) => updatePricingPack(pack.id, { dodoProductId: e.target.value })}
+                          placeholder="pdt_..."
+                          className="mt-1 w-full rounded-lg border border-gray-800 bg-gray-900 px-2.5 py-2 text-xs text-white outline-none focus:border-emerald-500"
+                        />
+                      </label>
+
                       <label className="flex min-h-9 items-center gap-2 text-[11px] font-semibold text-gray-400">
                         <input
                           type="checkbox"
@@ -1253,6 +1271,26 @@ export default function AdminPage() {
                       className="w-full bg-gray-950/70 border border-gray-800 rounded-xl px-3.5 py-2 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
                     />
                   </div>
+                </div>
+              </div>
+
+              {/* Dodo Payments */}
+              <div className="space-y-3 pt-4 border-t border-gray-800/80">
+                <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider">Dodo Payments</h4>
+                    <p className="mt-1 text-[10px] text-gray-500">Hosted global checkout. Configure each plan&apos;s Dodo product ID above.</p>
+                  </div>
+                  <label className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 text-xs font-bold ${settingsForm.enableDodo ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500' : 'border-gray-700 bg-gray-950 text-gray-400'}`}>
+                    <input type="checkbox" checked={settingsForm.enableDodo} onChange={(e) => setSettingsForm({ ...settingsForm, enableDodo: e.target.checked })} className="rounded border-gray-700 bg-gray-950 text-emerald-500" />
+                    {settingsForm.enableDodo ? 'Dodo active' : 'Dodo paused'}
+                  </label>
+                </div>
+                <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${settingsForm.enableDodo ? '' : 'opacity-50'}`}>
+                  <label className="block text-xs font-semibold text-gray-400">API key<input type="password" value={settingsForm.dodoApiKey} onChange={(e) => setSettingsForm({ ...settingsForm, dodoApiKey: e.target.value })} disabled={!settingsForm.enableDodo} placeholder="Dodo API key" className="mt-1 w-full rounded-xl border border-gray-800 bg-gray-950/70 px-3.5 py-2 text-xs text-white font-mono focus:border-emerald-500 focus:outline-none" /></label>
+                  <label className="block text-xs font-semibold text-gray-400">Webhook signing key<input type="password" value={settingsForm.dodoWebhookKey} onChange={(e) => setSettingsForm({ ...settingsForm, dodoWebhookKey: e.target.value })} disabled={!settingsForm.enableDodo} placeholder="whsec_..." className="mt-1 w-full rounded-xl border border-gray-800 bg-gray-950/70 px-3.5 py-2 text-xs text-white font-mono focus:border-emerald-500 focus:outline-none" /></label>
+                  <label className="block text-xs font-semibold text-gray-400">Environment<select value={settingsForm.dodoMode} onChange={(e) => setSettingsForm({ ...settingsForm, dodoMode: e.target.value as 'test' | 'live' })} disabled={!settingsForm.enableDodo} className="mt-1 w-full rounded-xl border border-gray-800 bg-gray-950/70 px-3.5 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"><option value="test">Test mode</option><option value="live">Live mode</option></select></label>
+                  <div className="rounded-xl border border-gray-800 bg-gray-950/60 p-3 text-[10px] leading-5 text-gray-400"><strong className="block text-gray-200">Webhook endpoint</strong><code>/api/webhooks/dodo</code><br />Listen for payment.succeeded, payment.failed, and payment.cancelled.</div>
                 </div>
               </div>
             </div>
