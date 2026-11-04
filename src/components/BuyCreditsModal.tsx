@@ -71,7 +71,11 @@ export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpe
         setSelectedPackId(current => nextPacks.some((pack: PricingPack) => pack.id === current)
           ? current
           : nextPacks[0]?.id || current);
-        setGateway(canUseSandbox ? 'test' : hasDodo ? 'dodo' : hasStripe ? 'stripe' : hasRazorpay ? 'razorpay' : 'stripe');
+
+        // Auto-select currency if only Razorpay is available
+        const defaultCurrency = (!hasStripe && !hasDodo && hasRazorpay) ? 'INR' : 'USD';
+        setCurrency(defaultCurrency);
+        setGateway(canUseSandbox ? 'test' : (!hasStripe && !hasDodo && hasRazorpay) ? 'razorpay' : hasDodo ? 'dodo' : hasStripe ? 'stripe' : hasRazorpay ? 'razorpay' : 'stripe');
       })
       .catch(() => setError('Pricing could not be loaded. Please try again.'));
   }, [isOpen, user?.role]);
@@ -81,7 +85,8 @@ export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpe
   const selectedPack = packs.find(pack => pack.id === selectedPackId) || packs[0];
   const availableCredits = user?.availableCredits ?? user?.credits ?? 0;
   const sandboxAvailable = testModeEnabled && user?.role === 'admin';
-  const hasPaymentMethod = sandboxAvailable || (currency === 'USD' ? (stripeAvailable || dodoAvailable) : razorpayAvailable);
+  const hasAnyGateway = sandboxAvailable || stripeAvailable || dodoAvailable || razorpayAvailable;
+  const hasPaymentMethod = sandboxAvailable || (currency === 'USD' ? (stripeAvailable || dodoAvailable) : razorpayAvailable) || (gateway === 'razorpay' && razorpayAvailable);
 
   const handleCheckout = async () => {
     if (!user) {
@@ -96,10 +101,11 @@ export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpe
     setLoading(true);
 
     try {
+      const checkoutCurrency = gateway === 'razorpay' ? 'INR' : currency;
       const response = await fetch('/api/payments/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ packId: selectedPack.id, gateway, currency }),
+        body: JSON.stringify({ packId: selectedPack.id, gateway, currency: checkoutCurrency }),
       });
       const data = await response.json();
       if (!response.ok || !data.success) throw new Error(data.error || 'Unable to start checkout.');
@@ -266,22 +272,50 @@ export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpe
                     <Sparkles className="h-4 w-4 text-[var(--app-accent)]" aria-hidden="true" /> Admin sandbox
                   </button>
                 )}
-                {stripeAvailable && currency === 'USD' && (
-                  <button type="button" onClick={() => setGateway('stripe')} className={`btn-secondary !text-xs ${gateway === 'stripe' ? '!border-[var(--app-accent)] !bg-[var(--app-surface-soft)]' : ''}`} aria-pressed={gateway === 'stripe'}>
-                    <CreditCard className="h-4 w-4 text-[var(--app-accent)]" aria-hidden="true" /> Stripe
+                {stripeAvailable && (
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      if (currency !== 'USD') setCurrency('USD');
+                      setGateway('stripe');
+                    }} 
+                    className={`btn-secondary !text-xs ${gateway === 'stripe' ? '!border-[var(--app-accent)] !bg-[var(--app-surface-soft)]' : ''}`} 
+                    aria-pressed={gateway === 'stripe'}
+                  >
+                    <CreditCard className="h-4 w-4 text-[var(--app-accent)]" aria-hidden="true" /> Stripe {currency === 'INR' ? '(USD $)' : ''}
                   </button>
                 )}
-                {dodoAvailable && currency === 'USD' && (
-                  <button type="button" onClick={() => setGateway('dodo')} className={`btn-secondary !text-xs ${gateway === 'dodo' ? '!border-[var(--app-brand)] !bg-[var(--app-brand-soft)]' : ''}`} aria-pressed={gateway === 'dodo'}>
-                    <ShieldCheck className="h-4 w-4 brand-text" aria-hidden="true" /> Dodo Payments
+                {dodoAvailable && (
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      if (currency !== 'USD') setCurrency('USD');
+                      setGateway('dodo');
+                    }} 
+                    className={`btn-secondary !text-xs ${gateway === 'dodo' ? '!border-[var(--app-brand)] !bg-[var(--app-brand-soft)]' : ''}`} 
+                    aria-pressed={gateway === 'dodo'}
+                  >
+                    <ShieldCheck className="h-4 w-4 brand-text" aria-hidden="true" /> Dodo Payments {currency === 'INR' ? '(USD $)' : ''}
                   </button>
                 )}
-                {razorpayAvailable && currency === 'INR' && (
-                  <button type="button" onClick={() => setGateway('razorpay')} className={`btn-secondary !text-xs ${gateway === 'razorpay' ? '!border-[var(--app-accent)] !bg-[var(--app-surface-soft)]' : ''}`} aria-pressed={gateway === 'razorpay'}>
-                    <ShieldCheck className="h-4 w-4 text-[var(--app-accent)]" aria-hidden="true" /> Razorpay
+                {razorpayAvailable && (
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      if (currency !== 'INR') setCurrency('INR');
+                      setGateway('razorpay');
+                    }} 
+                    className={`btn-secondary !text-xs ${gateway === 'razorpay' ? '!border-[var(--app-accent)] !bg-[var(--app-surface-soft)]' : ''}`} 
+                    aria-pressed={gateway === 'razorpay'}
+                  >
+                    <ShieldCheck className="h-4 w-4 text-[var(--app-accent)]" aria-hidden="true" /> Razorpay {currency === 'USD' ? '(INR ₹)' : ''}
                   </button>
                 )}
-                {!hasPaymentMethod && <p className="text-xs leading-5 text-secondary">Payment gateways are not configured yet. An administrator can connect Stripe or Razorpay in settings.</p>}
+                {!hasAnyGateway && (
+                  <p className="text-xs leading-5 text-secondary">
+                    Payment gateways are not configured yet. An administrator can connect Stripe, Razorpay, or Dodo in settings.
+                  </p>
+                )}
               </div>
             </div>
 
