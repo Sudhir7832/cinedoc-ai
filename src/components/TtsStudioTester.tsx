@@ -96,7 +96,11 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
 
   useEffect(() => {
     fetch('/api/admin/settings')
-      .then(response => response.json())
+      .then(async response => {
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.error || 'Settings unavailable');
+        return data;
+      })
       .then(data => {
         const config = data.runtimeConfig || {};
         setProviderHealth(current => ({
@@ -123,7 +127,21 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
           if (nextVoice) setCfVoiceId(nextVoice);
         }
       })
-      .catch(() => undefined);
+      .catch(async () => {
+        try {
+          const response = await fetch('/api/config');
+          const data = await response.json();
+          if (!response.ok || !data.success) return;
+          const config = data.config || {};
+          setProviderHealth(current => ({
+            ...current,
+            neural: 'ready',
+            openrouter: config.isOpenRouterConfigured ? 'configured' : 'missing',
+            cloudflare: config.isCloudflareConfigured ? 'configured' : 'missing',
+            sarvam: config.isSarvamConfigured ? 'configured' : 'missing',
+          }));
+        } catch {}
+      });
   }, [audience]);
 
   const handleGenerate = async () => {
@@ -225,12 +243,12 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
   return (
     <div className="surface-raised rounded-3xl p-6 sm:p-8 relative overflow-hidden">
       {/* Decorative background glow */}
-      <div className="absolute top-0 right-1/4 -mt-16 w-80 h-80 bg-gradient-to-br from-cyan-500/10 via-indigo-500/10 to-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="pointer-events-none absolute right-1/4 top-0 -mt-16 h-80 w-80 rounded-full bg-[var(--app-brand-soft)] blur-3xl" />
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-theme pb-5">
         <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-xs text-cyan-600 dark:text-cyan-400 font-semibold">
+          <div className="accent-soft inline-flex items-center gap-2 rounded-full border border-[var(--app-accent)] px-3 py-1 text-xs font-semibold">
             <Radio className="w-3.5 h-3.5 animate-pulse" />
             <span>Admin-only narration testing</span>
           </div>
@@ -322,13 +340,13 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
                 }}
                 className={`p-3 rounded-2xl border text-left transition flex flex-col justify-between overflow-hidden ${
                   provider === 'sarvam'
-                    ? 'bg-indigo-500/10 border-indigo-500 ring-1 ring-indigo-500/30 shadow-sm'
-                    : 'surface-card border-theme hover:border-indigo-500/50 hover:bg-indigo-500/5'
+                    ? 'bg-[var(--app-accent-soft)] border-[var(--app-accent)] ring-1 ring-[var(--app-accent)] shadow-sm'
+                    : 'surface-card border-theme hover:border-[var(--app-accent)]'
                 }`}
               >
                 <div className="flex items-center justify-between gap-1.5 min-w-0">
                   <span className="font-bold text-xs text-primary flex items-center gap-1.5 truncate">
-                    <Radio className="w-3.5 h-3.5 shrink-0 text-indigo-500" />
+                    <Radio className="h-3.5 w-3.5 shrink-0 text-[var(--app-accent)]" />
                     <span className="truncate">Sarvam AI</span>
                   </span>
                   <ProviderStatus status={providerHealth.sarvam} />
@@ -360,13 +378,13 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
                 onClick={() => setProvider('neural')}
                 className={`p-3 rounded-2xl border text-left transition flex flex-col justify-between overflow-hidden ${
                   provider === 'neural'
-                    ? 'bg-cyan-500/10 border-cyan-500 ring-1 ring-cyan-500/30 shadow-sm'
-                    : 'surface-card border-theme hover:border-cyan-500/50 hover:bg-cyan-500/5'
+                    ? 'bg-[var(--app-brand-soft)] border-[var(--app-brand)] ring-1 ring-[var(--app-brand)] shadow-sm'
+                    : 'surface-card border-theme hover:border-[var(--app-brand)]'
                 }`}
               >
                 <div className="flex items-center justify-between gap-1.5 min-w-0">
                   <span className="font-bold text-xs text-primary flex items-center gap-1.5 truncate">
-                    <Sliders className="w-3.5 h-3.5 shrink-0 text-cyan-500" />
+                    <Sliders className="h-3.5 w-3.5 shrink-0 brand-text" />
                     <span className="truncate">Neural</span>
                   </span>
                   <ProviderStatus status={providerHealth.neural} />
@@ -513,7 +531,7 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
 
             {provider === 'neural' && (
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-cyan-400 block mb-1.5">
+                <label className="mb-1.5 block text-xs font-semibold brand-text">
                   Studio Neural Narrator
                 </label>
                 <div className="grid grid-cols-1 gap-1.5">
@@ -529,8 +547,8 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
                       onClick={() => setNeuralVoice(v.id)}
                       className={`px-3 py-2 rounded-xl text-left text-xs transition border flex items-center justify-between ${
                         neuralVoice === v.id
-                          ? 'bg-cyan-500/15 border-cyan-500 text-cyan-600 dark:text-cyan-200 font-semibold shadow-sm'
-                          : 'bg-[var(--app-surface-soft)] border-theme text-secondary hover:text-primary hover:border-cyan-500/30'
+                          ? 'bg-[var(--app-brand-soft)] border-[var(--app-brand)] brand-text font-semibold shadow-sm'
+                          : 'bg-[var(--app-surface-soft)] border-theme text-secondary hover:text-primary hover:border-[var(--app-brand)]'
                       }`}
                     >
                       <span>{v.label}</span>
@@ -543,7 +561,7 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
 
             {provider === 'sarvam' && (
               <div className="space-y-3">
-                <label className="text-xs font-semibold text-indigo-300 block">
+                <label className="block text-xs font-semibold text-[var(--app-accent)]">
                   Sarvam model
                   <select value={sarvamModel} onChange={event => setSarvamModel(event.target.value)} className="app-field mt-1.5 text-xs">
                     <option value="bulbul:v4-flash">bulbul:v4-flash · recommended</option>
@@ -551,7 +569,7 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
                     <option value="bulbul:v2">bulbul:v2 · legacy</option>
                   </select>
                 </label>
-                <label className="text-xs font-semibold text-indigo-300 block">
+                <label className="block text-xs font-semibold text-[var(--app-accent)]">
                   Sarvam speaker
                   <select value={sarvamVoice} onChange={event => setSarvamVoice(event.target.value)} className="app-field mt-1.5 text-xs">
                     {!hasSarvamVoice(sarvamVoice) && <option value={sarvamVoice}>{sarvamVoice}</option>}
@@ -589,8 +607,8 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
                     onClick={() => setText(sample.text)}
                     className={`text-xs px-3 py-1.5 rounded-xl border font-bold transition shadow-sm ${
                       isSelected
-                        ? 'bg-cyan-600 border-cyan-500 text-white shadow-md shadow-cyan-600/20'
-                        : 'surface-card border-theme text-primary hover:bg-[var(--app-surface-soft)] hover:border-gray-400 dark:hover:border-gray-600'
+                        ? 'bg-[var(--app-accent)] border-[var(--app-accent)] text-white shadow-md'
+                        : 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700'
                     }`}
                   >
                     {sample.label}
@@ -604,7 +622,7 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="Type or paste any documentary narration sentence here..."
-              className="w-full p-4 surface-card border-theme rounded-2xl text-xs sm:text-sm text-primary placeholder:text-secondary focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/40 transition leading-relaxed resize-none shadow-sm"
+              className="app-field min-h-32 resize-none p-4 text-xs leading-relaxed shadow-sm sm:text-sm"
             />
           </div>
 
@@ -613,7 +631,7 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
             <button
               onClick={handleGenerate}
               disabled={isLoading || !text.trim()}
-              className="w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-600 via-indigo-600 to-amber-600 hover:from-cyan-500 hover:to-amber-500 text-white font-semibold text-sm shadow-xl shadow-cyan-950/40 transition active:scale-[0.99] disabled:opacity-50"
+              className="btn-primary w-full px-6 py-3.5 text-sm disabled:opacity-50"
             >
               {isLoading ? (
                 <>
@@ -642,7 +660,7 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
 
           {/* Audio Player Card */}
           {audioUrl && (
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-gray-900 via-gray-900 to-gray-950 border border-cyan-500/30 space-y-3 shadow-xl">
+            <div className="surface-raised space-y-3 rounded-2xl p-4">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4" />
@@ -667,13 +685,13 @@ export const TtsStudioTester: React.FC<TtsStudioTesterProps> = ({ onSavedAsDefau
 
               <div className="flex items-center justify-between pt-1">
                 <span className="text-[11px] text-gray-500 font-mono">
-                  Engine: <span className="text-cyan-400">{provider}</span> ({provider === 'cloudflare' ? cfModel : provider === 'openrouter' ? orModel : provider === 'sarvam' ? sarvamModel : neuralVoice})
+                  Engine: <span className="brand-text">{provider}</span> ({provider === 'cloudflare' ? cfModel : provider === 'openrouter' ? orModel : provider === 'sarvam' ? sarvamModel : neuralVoice})
                 </span>
 
                 <a
                   href={audioUrl}
-                  download="cinedoc_narration_sample.mp3"
-                  className="flex items-center gap-1.5 text-xs text-cyan-300 hover:text-white px-3 py-1.5 rounded-lg bg-gray-800/80 hover:bg-gray-700 transition"
+                  download="kinesisflow_narration_sample.mp3"
+                  className="btn-secondary !min-h-9 !px-3 !py-1.5 text-xs"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Download MP3</span>

@@ -5,9 +5,14 @@ import { DbManager } from '@/lib/db';
 export async function GET(req: NextRequest) {
   try {
     const user = await SessionManager.requireAuth(req);
+    const [entries, transactions] = await Promise.all([
+      DbManager.getCreditLedger(user.id),
+      DbManager.getTransactionsByUserId(user.id),
+    ]);
     return NextResponse.json({
       success: true,
-      entries: await DbManager.getCreditLedger(user.id),
+      entries,
+      transactions,
       user,
     });
   } catch (error: unknown) {

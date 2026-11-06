@@ -41,6 +41,7 @@ yarn-error.log*
 /data/credit-ledger.json
 /data/testimonials.json
 /data/jobs/
+/data/generated/
 /public/generated/
 /public/testimonials/
 /test_*.mp3

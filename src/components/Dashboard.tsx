@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import {
   ArrowRight,
@@ -17,16 +17,18 @@ import {
   Mic2,
   Play,
   Plus,
-  Sparkles,
   Trash2,
   Video,
   WandSparkles,
+  Languages,
+  Music2,
 } from 'lucide-react';
-import { DocumentaryJob } from '@/lib/types';
+import { DocumentaryJob, SafeUser } from '@/lib/types';
 import { SampleShowcase } from '@/components/SampleShowcase';
 import { scenePreviewUrl } from '@/lib/media-url';
 
 interface DashboardProps {
+  user?: SafeUser | null;
   jobs: DocumentaryJob[];
   isLoading: boolean;
   onNewJob: (presetTopic?: string) => void;
@@ -58,6 +60,7 @@ function formatDuration(seconds?: number): string {
 }
 
 export function Dashboard({
+  user,
   jobs,
   isLoading,
   onNewJob,
@@ -68,9 +71,23 @@ export function Dashboard({
 }: DashboardProps) {
   const [activeTab, setActiveTab] = useState<'studio' | 'features'>('studio');
   const [promptInput, setPromptInput] = useState('');
+  const [masterVideo, setMasterVideo] = useState<string>('');
+  const [masterPoster, setMasterPoster] = useState<string>('');
+
+  useEffect(() => {
+    fetch('/api/config')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.config?.masterOutputVideoUrl) {
+          setMasterVideo(data.config.masterOutputVideoUrl);
+          setMasterPoster(data.config.masterOutputPosterUrl || '');
+        }
+      })
+      .catch(() => undefined);
+  }, []);
 
   const completedCount = jobs.filter(job => job.status === 'completed').length;
-  const inProgressCount = jobs.filter(job => !['completed', 'failed'].includes(job.status)).length;
+  const inProgressCount = jobs.filter(job => !['completed', 'failed', 'cancelled'].includes(job.status)).length;
   const latestVisualJob = jobs.find(job => job.scenes?.[0]?.imagePath);
   const latestVisual = latestVisualJob
     ? latestVisualJob.thumbnailUrl || scenePreviewUrl(latestVisualJob.id, latestVisualJob.scenes[0].sceneNumber, latestVisualJob.scenes[0].imageUpdatedAt || latestVisualJob.updatedAt)
@@ -82,25 +99,21 @@ export function Dashboard({
   };
 
   return (
-    <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 sm:py-12">
-      <section className="grid gap-6 lg:grid-cols-[1.18fr_0.82fr]">
-        <div className="surface-card relative overflow-hidden rounded-[2rem] p-6 sm:p-9 lg:p-11">
-          <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[var(--app-brand)] opacity-[0.08] blur-3xl" />
-          <div className="relative max-w-3xl">
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full brand-soft px-3 py-1.5">
-              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-              <span className="text-[11px] font-extrabold uppercase tracking-[0.13em]">Audience-aware AI video studio</span>
-            </div>
+    <div className="mx-auto max-w-7xl space-y-10 px-4 py-8 sm:px-6 sm:py-12">
+      <section className="grid gap-5 lg:grid-cols-[1.18fr_0.82fr]">
+        <div className="surface-card border-t-2 border-t-[var(--app-brand)] p-6 sm:p-9 lg:p-11">
+          <div className="max-w-3xl">
+            <p className="eyebrow mb-5">KinesisFlow video workspace</p>
 
-            <h1 className="max-w-2xl text-4xl font-black leading-[1.05] tracking-[-0.055em] text-primary sm:text-5xl lg:text-[3.65rem]">
-              From a single idea to a film worth watching.
+            <h1 className="editorial-title max-w-2xl text-4xl leading-[1.02] text-primary sm:text-5xl lg:text-[3.8rem]">
+              Create documentary-style and Kids &amp; Family videos from one idea.
             </h1>
             <p className="mt-5 max-w-2xl text-sm leading-7 text-secondary sm:text-base">
-              Create a cinematic documentary or a colorful Kids & Family story for learning, comedy, adventure, or bedtime, then direct every scene, narration track, subtitle, and 1080p render in one workspace.
+              KinesisFlow turns a topic or script into planned scenes, generated visuals, narration, optional subtitles, and a 1080p MP4. Choose cinematic documentary direction or a Kids &amp; Family format before production starts.
             </p>
 
-            <form onSubmit={handlePromptSubmit} className="surface-raised mt-8 rounded-2xl p-2">
-              <label htmlFor="documentary-topic" className="sr-only">Documentary topic</label>
+            <label htmlFor="documentary-topic" className="mt-8 block text-xs font-semibold text-primary">Topic or production brief</label>
+            <form onSubmit={handlePromptSubmit} className="surface-raised mt-2 p-2">
               <div className="flex flex-col gap-2 sm:flex-row">
                 <div className="flex min-h-12 flex-1 items-center gap-2 px-3">
                   <WandSparkles className="h-5 w-5 shrink-0 brand-text" aria-hidden="true" />
@@ -108,12 +121,12 @@ export function Dashboard({
                     id="documentary-topic"
                     value={promptInput}
                     onChange={event => setPromptInput(event.target.value)}
-                    placeholder="What should your documentary explore?"
+                    placeholder="Enter a topic or production brief"
                     className="w-full bg-transparent text-sm text-primary outline-none placeholder:text-[var(--app-text-muted)]"
                   />
                 </div>
                 <button type="submit" className="btn-primary whitespace-nowrap px-5">
-                  Start production
+                  Create project
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </button>
               </div>
@@ -125,38 +138,34 @@ export function Dashboard({
                   type="button"
                   key={topic}
                   onClick={() => { setPromptInput(topic); onNewJob(topic); }}
-                  className="min-h-9 rounded-full border border-theme bg-[var(--app-surface-soft)] px-3 text-[11px] font-semibold text-secondary transition-colors hover:border-[var(--app-brand)] hover:text-[var(--app-text)]"
+                  className="min-h-9 border-b border-theme px-1 text-left text-[11px] font-semibold text-secondary transition-colors hover:border-[var(--app-brand)] hover:text-[var(--app-text)]"
                 >
                   {topic}
                 </button>
               ))}
             </div>
 
-            <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-theme pt-5 text-xs font-semibold text-secondary">
+            <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-theme pt-5 text-xs font-medium text-secondary">
               <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-[var(--app-success)]" aria-hidden="true" />1080p master</span>
               <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-[var(--app-success)]" aria-hidden="true" />Timed subtitles</span>
               <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-[var(--app-success)]" aria-hidden="true" />Neural voice</span>
+              <span className="flex items-center gap-1.5"><Languages className="h-3.5 w-3.5 text-[var(--app-accent)]" aria-hidden="true" />Hindi, English, and selected languages</span>
             </div>
           </div>
         </div>
 
-        <aside className="surface-raised overflow-hidden rounded-[2rem] p-5 sm:p-6" aria-label="Production pipeline preview">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="eyebrow">Production desk</p>
-              <h2 className="mt-1 text-lg font-extrabold tracking-tight text-primary">One connected workflow</h2>
-            </div>
-            <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Live
-            </span>
+        <aside className="surface-raised overflow-hidden p-5 sm:p-6" aria-label="Production pipeline preview">
+          <div>
+            <p className="eyebrow">Workflow</p>
+            <h2 className="mt-1 text-lg font-bold tracking-tight text-primary">Four production stages</h2>
           </div>
 
-          <div className="mt-5 space-y-2">
+          <div className="mt-5 border-y border-theme">
             {PIPELINE.map((stage, index) => {
               const Icon = stage.icon;
               return (
-                <div key={stage.label} className="flex items-center gap-3 rounded-xl border border-theme bg-[var(--app-surface-soft)] p-3.5">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--app-surface)] brand-text shadow-sm">
+                <div key={stage.label} className="flex items-center gap-3 border-b border-theme py-3.5 last:border-b-0">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center brand-text">
                     <Icon className="h-4 w-4" aria-hidden="true" />
                   </span>
                   <span className="min-w-0 flex-1">
@@ -169,47 +178,61 @@ export function Dashboard({
             })}
           </div>
 
-          <div className="relative mt-5 aspect-[16/8] overflow-hidden rounded-2xl bg-[#171821]">
-            {latestVisual ? (
+          <div className="relative mt-5 aspect-[16/8] overflow-hidden rounded-md bg-[#171821]">
+            {user && latestVisual ? (
+              <Image src={latestVisual} alt="Latest documentary scene" fill sizes="(min-width: 1024px) 32vw, 100vw" unoptimized className="object-cover opacity-85" />
+            ) : masterVideo ? (
+              <video
+                src={masterVideo}
+                poster={masterPoster || undefined}
+                autoPlay
+                muted
+                loop
+                playsInline
+                className="h-full w-full object-cover opacity-90"
+              />
+            ) : latestVisual ? (
               <Image src={latestVisual} alt="Latest documentary scene" fill sizes="(min-width: 1024px) 32vw, 100vw" unoptimized className="object-cover opacity-85" />
             ) : (
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_65%_35%,#ed5b3255,transparent_28%),linear-gradient(145deg,#20222d,#0d0e13)]" />
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
-            <div className="contrast-on-color absolute bottom-0 left-0 right-0 flex items-end justify-between p-4">
+            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent pointer-events-none" />
+            <div className="contrast-on-color absolute bottom-0 left-0 right-0 flex items-end justify-between p-4 pointer-events-none">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/60">Master output</p>
-                <p className="mt-1 text-sm font-bold">Cinematic 1080p delivery</p>
+                <p className="mt-1 text-sm font-bold truncate max-w-[200px]">
+                  {user && latestVisualJob ? latestVisualJob.topic : 'Cinematic 1080p delivery'}
+                </p>
               </div>
-              <span className="rounded-lg bg-white/10 px-2 py-1 text-[10px] font-bold backdrop-blur">30 FPS</span>
+              <span className="border border-white/20 px-2 py-1 text-[10px] font-bold shrink-0 ml-2">30 FPS</span>
             </div>
           </div>
         </aside>
       </section>
 
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Studio summary">
+      <section className="surface-card grid grid-cols-2 lg:grid-cols-4" aria-label="Studio summary">
         {[
           { label: 'Total productions', value: jobs.length, icon: Film },
           { label: 'Completed films', value: completedCount, icon: CheckCircle2 },
           { label: 'In production', value: inProgressCount, icon: Clock3 },
-          { label: 'Delivery quality', value: '1080p', icon: Video },
+          { label: 'Languages listed', value: '6', icon: Languages },
         ].map(metric => {
           const Icon = metric.icon;
           return (
-            <div key={metric.label} className="surface-card rounded-2xl p-4 sm:p-5">
+            <div key={metric.label} className="border-b border-r border-theme p-4 last:border-r-0 sm:p-5 [&:nth-child(2)]:border-r-0 [&:nth-child(n+3)]:border-b-0 lg:border-b-0 lg:[&:nth-child(2)]:border-r">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-xs font-semibold text-secondary">{metric.label}</span>
                 <Icon className="h-4 w-4 brand-text" aria-hidden="true" />
               </div>
-              <p className="mt-3 text-2xl font-black tracking-[-0.04em] text-primary">{metric.value}</p>
+              <p className="mt-3 font-mono text-2xl font-semibold tracking-[-0.04em] text-primary">{metric.value}</p>
             </div>
           );
         })}
       </section>
 
       <section className="space-y-5">
-        <div className="flex flex-col justify-between gap-3 border-b border-theme pb-4 sm:flex-row sm:items-center">
-          <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-xl surface-soft p-1">
+        <div className="flex flex-col justify-between gap-3 border-b border-theme sm:flex-row sm:items-end">
+          <div className="flex max-w-full items-center gap-6 overflow-x-auto">
             {[
               { id: 'studio' as const, label: `Projects ${jobs.length}`, icon: Film },
               { id: 'features' as const, label: 'Production toolkit', icon: Layers3 },
@@ -221,7 +244,7 @@ export function Dashboard({
                   type="button"
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3.5 text-xs font-bold transition-colors ${active ? 'bg-[var(--app-surface)] text-primary shadow-sm' : 'text-secondary hover:text-[var(--app-text)]'}`}
+                  className={`flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-0 text-xs font-bold transition-colors ${active ? 'border-[var(--app-brand)] text-primary' : 'border-transparent text-secondary hover:text-[var(--app-text)]'}`}
                   aria-pressed={active}
                 >
                   <Icon className="h-3.5 w-3.5" aria-hidden="true" />
@@ -239,17 +262,17 @@ export function Dashboard({
         {activeTab === 'studio' && (
           <div>
             {isLoading ? (
-              <div className="surface-card rounded-3xl p-16 text-center">
+              <div className="surface-card p-16 text-center">
                 <Loader2 className="mx-auto h-7 w-7 animate-spin brand-text" aria-hidden="true" />
                 <p className="mt-3 text-sm text-secondary">Loading your productions...</p>
               </div>
             ) : jobs.length === 0 ? (
-              <div className="surface-card rounded-3xl px-6 py-16 text-center">
-                <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl brand-soft">
+              <div className="surface-card px-6 py-16 text-center">
+                <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-md brand-soft">
                   <Film className="h-6 w-6" aria-hidden="true" />
                 </span>
                 <h3 className="mt-5 text-lg font-extrabold text-primary">Your production slate is empty</h3>
-                <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-secondary">Start with a topic and CineDoc will build the scenes, narration, subtitles, and final render.</p>
+                <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-secondary">Start with a topic and KinesisFlow will prepare scenes, narration, subtitle options, and a final render.</p>
                 <button type="button" onClick={() => onNewJob()} className="btn-primary mt-6">
                   <Plus className="h-4 w-4" aria-hidden="true" /> Create your first film
                 </button>
@@ -258,13 +281,13 @@ export function Dashboard({
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
                 {jobs.map(job => {
                   const completed = job.status === 'completed';
-                  const failed = job.status === 'failed';
+                  const failed = job.status === 'failed' || job.status === 'cancelled';
                   const image = job.thumbnailUrl || (job.scenes?.[0]?.imagePath
                     ? scenePreviewUrl(job.id, job.scenes[0].sceneNumber, job.scenes[0].imageUpdatedAt || job.updatedAt)
                     : undefined);
                   const openJob = () => completed ? onPreviewVideo(job) : onSelectJob(job.id);
                   return (
-                    <article key={job.id} className="surface-card group overflow-hidden rounded-3xl transition-[border-color,box-shadow] duration-200 hover:border-[var(--app-brand)] hover:shadow-[var(--app-shadow-md)]">
+                    <article key={job.id} className="surface-card group overflow-hidden transition-[border-color,box-shadow] duration-200 hover:border-[var(--app-brand)] hover:shadow-[var(--app-shadow-md)]">
                       <button type="button" onClick={openJob} className="relative block aspect-video w-full overflow-hidden bg-[#15161d] text-left" aria-label={`Open ${job.topic}`}>
                         {image ? (
                           <Image src={image} alt="" fill sizes="(min-width: 1024px) 30vw, (min-width: 768px) 48vw, 100vw" unoptimized className="object-cover transition-opacity duration-200 group-hover:opacity-90" />
@@ -273,12 +296,12 @@ export function Dashboard({
                         )}
                         <span className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/65 to-transparent" />
                         {completed && (
-                          <span className="absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white text-zinc-950 opacity-0 shadow-xl transition-opacity group-hover:opacity-100">
+                          <span className="absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white text-zinc-950 opacity-0 shadow-xl transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                             <Play className="ml-0.5 h-5 w-5 fill-current" aria-hidden="true" />
                           </span>
                         )}
                         <span className={`absolute left-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide backdrop-blur ${completed ? 'bg-emerald-500/90 text-white' : failed ? 'bg-red-500/90 text-white' : 'bg-white/90 text-zinc-900'}`}>
-                          {completed ? 'Ready' : failed ? 'Needs attention' : `${job.progress.percent}% in production`}
+                          {completed ? 'Ready' : job.status === 'cancelled' ? 'Stopped' : failed ? 'Needs attention' : `${job.progress.percent}% in production`}
                         </span>
                         <span className="absolute bottom-3 right-3 rounded-lg bg-black/65 px-2 py-1 text-[10px] font-bold text-white backdrop-blur">
                           {completed ? formatDuration(job.finalDurationSeconds) : `${job.durationMinutes} min`}
@@ -294,13 +317,13 @@ export function Dashboard({
                         </p>
 
                         <div className="mt-4 flex items-center gap-2 border-t border-theme pt-3">
-                          <button type="button" onClick={openJob} className="flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--app-surface-soft)] px-3 text-xs font-bold text-primary transition-colors hover:bg-[var(--app-brand-soft)]">
+                          <button type="button" onClick={openJob} className="flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-md bg-[var(--app-surface-soft)] px-3 text-xs font-bold text-primary transition-colors hover:bg-[var(--app-brand-soft)]">
                             {completed ? <Play className="h-3.5 w-3.5" aria-hidden="true" /> : null}
                             {completed ? 'Watch film' : 'View pipeline'}
                             {!completed ? <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" /> : null}
                           </button>
                           {job.videoUrl && (
-                            <a href={job.videoUrl} download className="icon-button !h-10 !w-10" aria-label={`Download ${job.topic}`} title="Download MP4">
+                            <a href={job.videoUrl} download={`kinesisflow_${job.topic.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 30)}_1080p.mp4`} className="icon-button !h-10 !w-10" aria-label={`Download ${job.topic}`} title="Download MP4">
                               <Download className="h-4 w-4" aria-hidden="true" />
                             </a>
                           )}
@@ -318,17 +341,18 @@ export function Dashboard({
         )}
 
         {activeTab === 'features' && (
-          <div className="grid gap-5 md:grid-cols-3">
+          <div className="grid border-y border-theme md:grid-cols-2 lg:grid-cols-4">
             {[
               { icon: Camera, title: 'Motion direction', text: 'Every still becomes a composed shot with controlled pan, zoom, pacing, and scene transitions.' },
               { icon: Mic2, title: 'Narrative voice', text: 'Match a documentary voice to the script and produce scene-level audio with timed subtitles.' },
               { icon: Layers3, title: 'Timeline control', text: 'Replace visuals, refine narration, reorder scenes, and render a new master without rebuilding the project.' },
+              { icon: Music2, title: 'Animated kids rhymes', text: 'Create Hindi or English rhyme videos with singable lyrics, generated music, and rhythm-driven character motion.' },
             ].map(feature => {
               const Icon = feature.icon;
               return (
-                <article key={feature.title} className="surface-card rounded-3xl p-6 sm:p-7">
-                  <span className="flex h-11 w-11 items-center justify-center rounded-xl brand-soft"><Icon className="h-5 w-5" aria-hidden="true" /></span>
-                  <h3 className="mt-5 text-base font-extrabold text-primary">{feature.title}</h3>
+                <article key={feature.title} className="border-b border-theme p-6 md:border-r lg:border-b-0 last:border-r-0 sm:p-7">
+                  <Icon className="h-5 w-5 brand-text" aria-hidden="true" />
+                  <h3 className="mt-5 text-base font-bold text-primary">{feature.title}</h3>
                   <p className="mt-2 text-sm leading-6 text-secondary">{feature.text}</p>
                 </article>
               );
@@ -338,11 +362,11 @@ export function Dashboard({
 
       </section>
 
-      <section className="surface-card flex flex-col items-start justify-between gap-5 rounded-3xl p-6 sm:flex-row sm:items-center sm:p-8">
+      <section className="surface-card flex flex-col items-start justify-between gap-5 border-l-2 border-l-[var(--app-brand)] p-6 sm:flex-row sm:items-center sm:p-8">
         <div>
           <p className="eyebrow">Simple usage pricing</p>
-          <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-primary">Creator starts at $11 with 150 credits.</h2>
-          <p className="mt-2 text-sm text-secondary">Choose a straightforward credit pack for documentary and Kids & Family production.</p>
+          <h2 className="editorial-title mt-2 text-3xl text-primary">150 production credits for $11.</h2>
+          <p className="mt-2 text-sm text-secondary">Use credits for documentary and Kids & Family projects.</p>
         </div>
         <button type="button" onClick={onOpenPricing} className="btn-primary shrink-0">
           Compare plans <ArrowRight className="h-4 w-4" aria-hidden="true" />

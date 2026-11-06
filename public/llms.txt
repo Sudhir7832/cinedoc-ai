@@ -1,6 +1,6 @@
-# CineDoc AI
+# KinesisFlow
 
-> CineDoc AI is an AI-assisted video production studio for cinematic documentaries and Kids & Family stories.
+> KinesisFlow is an AI-assisted video creation product for documentary-style and Kids & Family videos. The legal operator is not yet confirmed and must be added before launch.
 
 ## Public pages
 
@@ -13,11 +13,12 @@
 ## Core capabilities
 
 - Generate scene-based scripts from a topic or custom narration.
-- Choose cinematic documentary or Kids & Family formats: educational, entertainment, adventure, and bedtime.
+- Choose cinematic documentary direction or Kids & Family formats: learning, entertainment, gentle adventure, bedtime, and animated rhyme.
 - Generate audience-aware visuals and independent documentary/kids narration profiles.
 - Select whether synchronized subtitles are burned into the final video.
 - Review scenes, replace images, edit narration, adjust timing, and rerender.
 - Credits are reserved during processing and deducted after a validated successful render.
+- One-minute projects support landscape 16:9 or vertical 9:16; longer projects currently use landscape.
 
 ## Supported narration providers
 
@@ -36,3 +37,15 @@
 
 - Public documentation pages may be indexed.
 - Admin, authentication, generated user media, and API routes are private or operational surfaces.
+
+## Limitations
+
+- Generated scripts, claims, visuals, narration, and subtitles may contain errors or inconsistencies.
+- KinesisFlow does not guarantee factual accuracy, uniqueness, rights clearance, or child suitability.
+- Creators must review factual claims, intellectual-property rights, age appropriateness, pronunciation, and final output before publishing.
+- Availability and output quality depend on configured third-party AI, storage, authentication, and payment providers.
+
+## Legal status
+
+- KinesisFlow is the product name, not a confirmed legal entity.
+- RELEASE BLOCKER: add the verified legal operator, jurisdiction, contact details, and effective legal terms before public launch.

@@ -2,7 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { 
+import {
+  Check,
+  Download,
+  Sparkles, 
   CheckCircle2, 
   Circle, 
   Loader2, 
@@ -45,6 +48,56 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [uploadingSceneNum, setUploadingSceneNum] = useState<number | null>(null);
   const [imageUploadMsg, setImageUploadMsg] = useState<string | null>(null);
+  const [selectedThumbnailUrl, setSelectedThumbnailUrl] = useState<string | null>(null);
+  const [isUpdatingThumb, setIsUpdatingThumb] = useState(false);
+  const [thumbnailStatusMsg, setThumbnailStatusMsg] = useState<string | null>(null);
+
+  const thumbnailCandidates = React.useMemo(() => {
+    const list: string[] = [];
+    if (job?.thumbnailOptions && job.thumbnailOptions.length > 0) {
+      list.push(...job.thumbnailOptions);
+    }
+    if (list.length === 0 && job?.thumbnailUrl) {
+      list.push(job.thumbnailUrl);
+    }
+    if (list.length < 2 && job?.scenes && job.scenes.length > 0) {
+      const scene1 = scenePreviewUrl(job.id, job.scenes[0].sceneNumber, job.scenes[0].imageUpdatedAt || job.updatedAt);
+      if (!list.includes(scene1)) list.push(scene1);
+      if (job.scenes.length > 1) {
+        const midIdx = Math.min(job.scenes.length - 1, Math.max(1, Math.floor(job.scenes.length / 2)));
+        const sceneMid = scenePreviewUrl(job.id, job.scenes[midIdx].sceneNumber, job.scenes[midIdx].imageUpdatedAt || job.updatedAt);
+        if (!list.includes(sceneMid)) list.push(sceneMid);
+      }
+    }
+    return list.slice(0, 2);
+  }, [job]);
+
+  const activeThumb = selectedThumbnailUrl || job?.thumbnailUrl || thumbnailCandidates[0] || '';
+
+  const handleSelectThumbnail = async (thumbUrl: string) => {
+    if (!job) return;
+    setSelectedThumbnailUrl(thumbUrl);
+    setIsUpdatingThumb(true);
+    setThumbnailStatusMsg(null);
+    try {
+      const res = await fetch(`/api/jobs/${job.id}/thumbnail`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ thumbnailUrl: thumbUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to update thumbnail');
+      setThumbnailStatusMsg('Active YouTube thumbnail updated!');
+      setJob(prev => prev ? { ...prev, thumbnailUrl: thumbUrl } : null);
+      setTimeout(() => setThumbnailStatusMsg(null), 4000);
+    } catch (err: unknown) {
+      console.error('[Select Thumbnail Error]:', err);
+      setThumbnailStatusMsg('Failed to update thumbnail.');
+      setTimeout(() => setThumbnailStatusMsg(null), 4000);
+    } finally {
+      setIsUpdatingThumb(false);
+    }
+  };
 
   useEffect(() => {
     if (!isTimelineOpen) return;
@@ -319,6 +372,125 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* YouTube Thumbnail Selection (Shown when completed) */}
+      {isCompleted && thumbnailCandidates.length > 0 && (
+        <section className="surface-raised rounded-3xl p-6 sm:p-7 relative overflow-hidden border border-theme">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="brand-soft flex h-8 w-8 items-center justify-center rounded-lg">
+                  <Sparkles className="h-4 w-4" />
+                </span>
+                <h2 className="text-lg font-black tracking-tight text-primary">
+                  Choose YouTube Thumbnail
+                </h2>
+                <span className="success-soft rounded-full border border-[var(--app-success)] px-2 py-0.5 text-[11px] font-semibold">
+                  16:9 HD Ready
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-secondary">
+                Select your preferred thumbnail for YouTube. Click either option below to make it the active thumbnail for this video.
+              </p>
+            </div>
+
+            {thumbnailStatusMsg && (
+              <span className="text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl self-start sm:self-auto flex items-center gap-1.5 animate-in fade-in">
+                <Check className="h-3.5 w-3.5" />
+                {thumbnailStatusMsg}
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {thumbnailCandidates.map((thumbUrl, idx) => {
+              const isSelected = activeThumb === thumbUrl;
+              const optionLabel = idx === 0 ? 'Option 1: Hook Opening' : 'Option 2: Climax & Story Peak';
+
+              return (
+                <div
+                  key={thumbUrl}
+                  onClick={() => void handleSelectThumbnail(thumbUrl)}
+                  className={`group relative flex flex-col overflow-hidden rounded-2xl border-2 transition-all cursor-pointer ${
+                    isSelected
+                      ? 'border-[var(--app-brand)] bg-[var(--app-surface-soft)] shadow-lg shadow-[var(--app-brand)]/15 ring-2 ring-[var(--app-brand)]/40'
+                      : 'border-theme hover:border-[var(--app-brand)]/60 bg-[var(--app-surface)] hover:bg-[var(--app-surface-soft)]'
+                  }`}
+                >
+                  {/* 16:9 Thumbnail Preview */}
+                  <div className="relative aspect-video w-full overflow-hidden bg-black/40">
+                    <img
+                      src={thumbUrl}
+                      alt={optionLabel}
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+
+                    {/* Active Badge */}
+                    {isSelected ? (
+                      <span className="absolute top-2.5 left-2.5 bg-[var(--app-brand)] text-white text-[11px] font-black px-2.5 py-1 rounded-full shadow-md flex items-center gap-1">
+                        <Check className="h-3 w-3" />
+                        Active YouTube Thumbnail
+                      </span>
+                    ) : (
+                      <span className="absolute top-2.5 left-2.5 bg-black/70 backdrop-blur-sm text-white/90 text-[10px] font-semibold px-2 py-0.5 rounded-md opacity-90 group-hover:opacity-100 transition">
+                        Click to select
+                      </span>
+                    )}
+
+                    <span className="absolute bottom-2.5 right-2.5 bg-black/80 backdrop-blur-sm text-white text-[10px] font-mono px-2 py-0.5 rounded-md">
+                      1280 × 720 (16:9)
+                    </span>
+                  </div>
+
+                  {/* Footer & Actions */}
+                  <div className="p-3.5 flex items-center justify-between gap-2 border-t border-theme">
+                    <div>
+                      <p className="text-xs font-bold text-primary">{optionLabel}</p>
+                      <p className="text-[11px] text-secondary">
+                        {isSelected ? 'Currently set as video poster' : 'Click to apply as thumbnail'}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <a
+                        href={thumbUrl}
+                        download={`youtube_thumbnail_${idx + 1}.jpg`}
+                        onClick={e => e.stopPropagation()}
+                        className="icon-button !h-8 !w-8"
+                        title="Download high-res thumbnail for YouTube Studio"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                      </a>
+
+                      <button
+                        type="button"
+                        onClick={e => {
+                          e.stopPropagation();
+                          void handleSelectThumbnail(thumbUrl);
+                        }}
+                        disabled={isUpdatingThumb}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                          isSelected
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                            : 'btn-secondary !min-h-8 text-xs'
+                        }`}
+                      >
+                        {isSelected ? (
+                          <>
+                            <Check className="h-3.5 w-3.5" /> Selected
+                          </>
+                        ) : (
+                          'Select'
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Scene by Scene Live Feed */}
       {job.scenes && job.scenes.length > 0 && (

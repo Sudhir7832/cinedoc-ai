@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { JobManager } from '@/lib/jobs/manager';
 import { StorageManager } from '@/lib/storage';
 import { SessionManager } from '@/lib/auth/session';
+import { parseJsonBody } from '@/lib/security/request';
+import { createJobSchema } from '@/lib/security/schemas';
+import { rateLimit } from '@/lib/security/rate-limit';
+import { secureErrorResponse } from '@/lib/security/errors';
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Unexpected jobs API error';
@@ -10,6 +14,8 @@ function errorMessage(error: unknown): string {
 export async function GET(req: NextRequest) {
   try {
     const user = await SessionManager.requireAuth(req);
+    const limited = await rateLimit(req, { bucket: 'jobs-list', limit: 120, windowSeconds: 60, failClosed: false, discriminator: user.id });
+    if (limited) return limited;
     const jobs = (await StorageManager.listJobs()).filter(j => SessionManager.canAccessJob(user, j));
 
     return NextResponse.json({ success: true, jobs });
@@ -25,32 +31,14 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const user = await SessionManager.requireAuth(req);
-    const body = await req.json();
-    const { topic, customScript, durationMinutes = 1, language, voice = 'alloy', contentStyle = 'documentary', kidsFormat = 'entertainment', includeSubtitles = true, aspectRatio = '16:9' } = body;
-
-    if (!topic || typeof topic !== 'string' || !topic.trim()) {
-      return NextResponse.json({ success: false, error: 'Documentary topic or title is required.' }, { status: 400 });
+    const limited = await rateLimit(req, { bucket: 'job-create', limit: 3, windowSeconds: 300, failClosed: true, discriminator: user.id });
+    if (limited) return limited;
+    const body = await parseJsonBody(req, createJobSchema, 64 * 1024);
+    const activeJobs = (await StorageManager.listJobs()).filter(job => job.userId === user.id && !['completed', 'failed', 'cancelled'].includes(job.status));
+    if (activeJobs.length >= 2) {
+      return NextResponse.json({ success: false, error: 'Finish or stop an active production before starting another.' }, { status: 429 });
     }
-
-    const dur = Number(durationMinutes) as 1 | 3 | 5;
-    if (![1, 3, 5].includes(dur)) {
-      return NextResponse.json({ success: false, error: 'Duration must be 1, 3, or 5 minutes.' }, { status: 400 });
-    }
-    if (!['documentary', 'kids'].includes(contentStyle)) {
-      return NextResponse.json({ success: false, error: 'Content style must be documentary or kids.' }, { status: 400 });
-    }
-    if (contentStyle === 'kids' && !['educational', 'entertainment', 'adventure', 'bedtime'].includes(kidsFormat)) {
-      return NextResponse.json({ success: false, error: 'Kids format must be educational, entertainment, adventure, or bedtime.' }, { status: 400 });
-    }
-    if (typeof includeSubtitles !== 'boolean') {
-      return NextResponse.json({ success: false, error: 'Subtitle preference must be true or false.' }, { status: 400 });
-    }
-    if (!['16:9', '9:16'].includes(aspectRatio)) {
-      return NextResponse.json({ success: false, error: 'Aspect ratio must be 16:9 or 9:16.' }, { status: 400 });
-    }
-    if (aspectRatio === '9:16' && dur !== 1) {
-      return NextResponse.json({ success: false, error: 'Vertical 9:16 output is available for 1-minute videos.' }, { status: 400 });
-    }
+    const { topic, customScript, durationMinutes: dur, language, voice, contentStyle, kidsFormat, includeSubtitles, aspectRatio } = body;
 
     const job = await JobManager.createJob({
       topic: topic.trim(),
@@ -60,16 +48,20 @@ export async function POST(req: NextRequest) {
       kidsFormat: contentStyle === 'kids' ? kidsFormat : undefined,
       includeSubtitles,
       aspectRatio,
-      language: language || undefined,
+      language,
       voice,
       userId: user.id,
     });
 
     return NextResponse.json({ success: true, job });
   } catch (err: unknown) {
+    console.error('[POST /api/jobs] Job creation error:', err);
     const message = errorMessage(err);
     const isCreditError = message.includes('Insufficient credits');
     const isAuthError = message.includes('Authentication required');
+    if (!isCreditError && !isAuthError) {
+      return secureErrorResponse(err, message || 'Unable to create production.');
+    }
     return NextResponse.json(
       { success: false, error: message },
       { status: isCreditError ? 402 : isAuthError ? 401 : 500 }

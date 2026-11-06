@@ -16,10 +16,6 @@ import { SafeUser } from '@/lib/types';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface NavbarProps {
-  apiKeyConfigured: boolean;
-  ffmpegAvailable: boolean;
-  databaseAvailable: boolean;
-  testMode?: boolean;
   user: SafeUser | null;
   welcomeCredits?: number;
   onNewJob: () => void;
@@ -30,10 +26,6 @@ interface NavbarProps {
 }
 
 export function Navbar({
-  apiKeyConfigured,
-  ffmpegAvailable,
-  databaseAvailable,
-  testMode = false,
   user,
   welcomeCredits = 10,
   onNewJob,
@@ -44,48 +36,39 @@ export function Navbar({
 }: NavbarProps) {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const availableCredits = user ? (user.availableCredits ?? user.credits) : 0;
-  const systemReady = apiKeyConfigured && ffmpegAvailable && databaseAvailable;
 
   return (
     <header className="app-header sticky top-0 z-40 px-4 sm:px-6">
-      <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between gap-3">
-        <Link href="/" className="flex min-w-0 items-center gap-3" aria-label="CineDoc AI home">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--app-text)] text-[var(--app-surface)] shadow-sm">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3">
+        <Link href="/" className="flex min-w-0 items-center gap-3" aria-label="KinesisFlow home">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[var(--app-text)] text-[var(--app-surface)]">
             <Clapperboard className="h-5 w-5" aria-hidden="true" />
           </span>
           <span className="min-w-0">
-            <span className="block truncate text-base font-extrabold tracking-[-0.03em] text-primary">CineDoc AI</span>
-            <span className="hidden text-[11px] font-medium text-secondary sm:block">AI video production studio</span>
+            <span className="block truncate text-base font-extrabold tracking-[-0.03em] text-primary">KinesisFlow</span>
+            <span className="hidden text-[11px] font-medium text-secondary sm:block">AI-assisted video workspace</span>
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-1 rounded-xl surface-soft p-1 lg:flex" aria-label="Primary navigation">
-          <Link href="/" className="rounded-lg px-3.5 py-2 text-xs font-semibold text-primary transition-colors hover:bg-[var(--app-surface)]">
+        <nav className="hidden items-center gap-6 lg:flex" aria-label="Primary navigation">
+          <Link href="/" className="border-b border-[var(--app-text)] py-2 text-xs font-semibold text-primary">
             Studio
           </Link>
-          <button type="button" onClick={onOpenBuyCredits} className="rounded-lg px-3.5 py-2 text-xs font-semibold text-secondary transition-colors hover:bg-[var(--app-surface)] hover:text-[var(--app-text)]">
+          <button type="button" onClick={onOpenBuyCredits} className="py-2 text-xs font-semibold text-secondary transition-colors hover:text-[var(--app-text)]">
             Pricing
           </button>
-          <Link href="/about" className="rounded-lg px-3.5 py-2 text-xs font-semibold text-secondary transition-colors hover:bg-[var(--app-surface)] hover:text-[var(--app-text)]">
+          <Link href="/about" className="py-2 text-xs font-semibold text-secondary transition-colors hover:text-[var(--app-text)]">
             About
           </Link>
-          <Link href="/faq" className="rounded-lg px-3.5 py-2 text-xs font-semibold text-secondary transition-colors hover:bg-[var(--app-surface)] hover:text-[var(--app-text)]">
+          <Link href="/faq" className="py-2 text-xs font-semibold text-secondary transition-colors hover:text-[var(--app-text)]">
             FAQ
           </Link>
-          <Link href="/terms" className="rounded-lg px-3.5 py-2 text-xs font-semibold text-secondary transition-colors hover:bg-[var(--app-surface)] hover:text-[var(--app-text)]">
+          <Link href="/terms" className="py-2 text-xs font-semibold text-secondary transition-colors hover:text-[var(--app-text)]">
             Terms
           </Link>
         </nav>
 
         <div className="flex items-center gap-2">
-          <div
-            className="hidden items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold surface-soft xl:flex"
-            title={systemReady ? 'AI providers and render engine are ready' : 'Open settings to finish system setup'}
-          >
-            <span className={`h-2 w-2 rounded-full ${systemReady ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-            <span className="text-secondary">{!databaseAvailable ? 'Supabase offline' : testMode ? 'Sandbox' : systemReady ? 'Production ready' : 'Setup required'}</span>
-          </div>
-
           <ThemeToggle />
 
           {user ? (

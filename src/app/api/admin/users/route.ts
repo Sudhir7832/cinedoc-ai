@@ -1,33 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SessionManager } from '@/lib/auth/session';
 import { DbManager } from '@/lib/db';
+import { requireSameOrigin } from '@/lib/security/origin';
+import { rateLimit } from '@/lib/security/rate-limit';
+import { parseJsonBody } from '@/lib/security/request';
+import { adminCreateUserSchema } from '@/lib/security/schemas';
+import { secureErrorResponse } from '@/lib/security/errors';
 
 export async function GET(req: NextRequest) {
   try {
+    const limited = await rateLimit(req, { bucket: 'admin-users-read', limit: 60, windowSeconds: 60, failClosed: true });
+    if (limited) return limited;
     await SessionManager.requireAdmin(req);
     const users = (await DbManager.getUsers()).map(user => DbManager.toSafeUser(user));
     return NextResponse.json({ success: true, users });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Unauthorized';
-    return NextResponse.json(
-      { success: false, error: message },
-      { status: message.includes('Forbidden') ? 403 : 401 }
-    );
+    return secureErrorResponse(err, 'Unable to load users.');
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
+    requireSameOrigin(req);
+    const limited = await rateLimit(req, { bucket: 'admin-users-create', limit: 10, windowSeconds: 600, failClosed: true });
+    if (limited) return limited;
     await SessionManager.requireAdmin(req);
-    const body = await req.json();
-    const { email, password, name, role } = body;
+    const { email, password, name, role } = await parseJsonBody(req, adminCreateUserSchema, 8 * 1024);
 
     const user = await DbManager.createUser({ email, password, name, role });
     return NextResponse.json({ success: true, user });
   } catch (err: unknown) {
-    return NextResponse.json(
-      { success: false, error: err instanceof Error ? err.message : 'Unable to create user' },
-      { status: 400 }
-    );
+    return secureErrorResponse(err, 'Unable to create user.');
   }
 }

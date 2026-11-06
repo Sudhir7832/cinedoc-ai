@@ -1,21 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createRouteSupabase } from '@/lib/supabase/server';
 import { DbManager } from '@/lib/db';
+import { requireSameOrigin } from '@/lib/security/origin';
+import { rateLimit } from '@/lib/security/rate-limit';
+import { parseJsonBody } from '@/lib/security/request';
+import { loginSchema } from '@/lib/security/schemas';
+import { secureErrorResponse } from '@/lib/security/errors';
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const email = String(body.email || '').trim().toLowerCase();
-    const password = String(body.password || '');
-    if (!email || !password) return NextResponse.json({ success: false, error: 'Email and password are required' }, { status: 400 });
+    requireSameOrigin(req);
+    const limited = await rateLimit(req, { bucket: 'auth-login', limit: 10, windowSeconds: 900, failClosed: true });
+    if (limited) return limited;
+    const { email, password } = await parseJsonBody(req, loginSchema, 4 * 1024);
 
     const auth = createRouteSupabase(req);
     const { data, error } = await auth.client.auth.signInWithPassword({ email, password });
-    if (error || !data.user) return NextResponse.json({ success: false, error: error?.message || 'Invalid email or password' }, { status: 401 });
+    if (error || !data.user) return NextResponse.json({ success: false, error: 'Invalid email or password.' }, { status: 401 });
     const profile = await DbManager.getUserById(data.user.id);
-    if (!profile) throw new Error('Supabase profile is missing. Run the database schema trigger.');
+    if (!profile) throw new Error('Profile unavailable.');
     return auth.applyCookies(NextResponse.json({ success: true, user: DbManager.toSafeUser(profile), message: 'Signed in successfully' }));
   } catch (error: unknown) {
-    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Login failed' }, { status: 500 });
+    return secureErrorResponse(error, 'Login failed.');
   }
 }

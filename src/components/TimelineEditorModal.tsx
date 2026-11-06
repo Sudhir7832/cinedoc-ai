@@ -137,7 +137,19 @@ export const TimelineEditorModal: React.FC<TimelineEditorModalProps> = ({
       const res = await fetch(`/api/jobs/${job.id}/timeline`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scenes, includeSubtitles }),
+        body: JSON.stringify({
+          scenes: scenes.map(scene => ({
+            sceneNumber: scene.sceneNumber,
+            title: scene.title,
+            narration: scene.narration,
+            imagePrompt: scene.imagePrompt,
+            approxDurationSeconds: scene.approxDurationSeconds,
+            subtitleText: scene.subtitleText,
+            imagePath: scene.imagePath,
+            audioPath: scene.audioPath,
+          })),
+          includeSubtitles,
+        }),
       });
 
       const data = await res.json();
@@ -163,7 +175,19 @@ export const TimelineEditorModal: React.FC<TimelineEditorModalProps> = ({
       const saveResponse = await fetch(`/api/jobs/${job.id}/timeline`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scenes, includeSubtitles }),
+        body: JSON.stringify({
+          scenes: scenes.map(scene => ({
+            sceneNumber: scene.sceneNumber,
+            title: scene.title,
+            narration: scene.narration,
+            imagePrompt: scene.imagePrompt,
+            approxDurationSeconds: scene.approxDurationSeconds,
+            subtitleText: scene.subtitleText,
+            imagePath: scene.imagePath,
+            audioPath: scene.audioPath,
+          })),
+          includeSubtitles,
+        }),
       });
       const saveData = await saveResponse.json();
       if (!saveResponse.ok || !saveData.success) {
@@ -264,7 +288,7 @@ export const TimelineEditorModal: React.FC<TimelineEditorModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setIncludeSubtitles(false)}
-                  className={`min-h-11 rounded-xl border px-3 text-xs font-bold transition ${!includeSubtitles ? 'border-[var(--app-accent)] bg-purple-500/10 text-[var(--app-accent)]' : 'border-theme bg-[var(--app-surface-soft)] text-secondary hover:text-[var(--app-text)]'}`}
+                  className={`min-h-11 rounded-xl border px-3 text-xs font-bold transition ${!includeSubtitles ? 'border-[var(--app-accent)] bg-[var(--app-accent-soft)] text-[var(--app-accent)]' : 'border-theme bg-[var(--app-surface-soft)] text-secondary hover:text-[var(--app-text)]'}`}
                   aria-pressed={!includeSubtitles}
                 >
                   <span className="flex items-center justify-center gap-1.5"><EyeOff className="h-4 w-4" /> Remove subtitles</span>

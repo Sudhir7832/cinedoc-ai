@@ -7,7 +7,8 @@ import { exec } from 'child_process';
 const execAsync = promisify(exec);
 
 async function run() {
-  const key = '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';
+  const key = process.env.OPENROUTER_API_KEY;
+  if (!key) throw new Error('OPENROUTER_API_KEY is required.');
   const model = 'fish-audio/s2.1-pro-free:free';
   const hindiText = 'नमस्ते और स्वागत है। आज हम इतिहास के सबसे बड़े रहस्यों में से एक, बरमूडा त्रिकोण की पड़ताल करेंगे, जहाँ दर्जनों जहाज़ और विमान बिना किसी निशान के गायब हो गए।';
 

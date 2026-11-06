@@ -29,6 +29,9 @@ import {
   RadioTower,
   CircleDot,
   GalleryVerticalEnd,
+  Video,
+  Receipt,
+  Copy,
 } from 'lucide-react';
 import { SafeUser, DocumentaryJob, PaymentTransaction, PricingPack, TtsProvider } from '@/lib/types';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -36,7 +39,7 @@ import { TtsStudioTester } from '@/components/TtsStudioTester';
 import { NarrationProfileSettings } from '@/components/NarrationProfileSettings';
 import { AdminTestimonialsPanel } from '@/components/AdminTestimonialsPanel';
 
-type AdminTab = 'overview' | 'users' | 'jobs' | 'showcase' | 'voice' | 'settings';
+type AdminTab = 'overview' | 'users' | 'transactions' | 'jobs' | 'showcase' | 'voice' | 'settings';
 
 interface AdminStats {
   totalUsers: number;
@@ -61,6 +64,12 @@ export default function AdminPage() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<SafeUser[]>([]);
   const [jobs, setJobs] = useState<DocumentaryJob[]>([]);
+  const [transactions, setTransactions] = useState<PaymentTransaction[]>([]);
+  const [selectedTransaction, setSelectedTransaction] = useState<PaymentTransaction | null>(null);
+  const [txSearchQuery, setTxSearchQuery] = useState('');
+  const [txGatewayFilter, setTxGatewayFilter] = useState<'all' | 'razorpay' | 'stripe' | 'dodo' | 'test'>('all');
+  const [txStatusFilter, setTxStatusFilter] = useState<'all' | 'completed' | 'pending' | 'failed'>('all');
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -68,6 +77,7 @@ export default function AdminPage() {
   const [customCreditAmount, setCustomCreditAmount] = useState(50);
   const [actionMsg, setActionMsg] = useState('');
   const [actionErr, setActionErr] = useState('');
+  const [paymentConfiguration, setPaymentConfiguration] = useState({ stripeConfigured: false, razorpayConfigured: false, dodoConfigured: false });
 
   // Settings form
   const [settingsForm, setSettingsForm] = useState({
@@ -77,12 +87,6 @@ export default function AdminPage() {
     enableStripe: true,
     enableRazorpay: true,
     enableDodo: false,
-    stripePublishableKey: '',
-    stripeSecretKey: '',
-    razorpayKeyId: '',
-    razorpayKeySecret: '',
-    dodoApiKey: '',
-    dodoWebhookKey: '',
     dodoMode: 'test' as 'test' | 'live',
     // AI Provider & Model Controls
     imageProvider: 'cloudflare',
@@ -94,7 +98,6 @@ export default function AdminPage() {
     ttsVoice: 'hi-IN-MadhurNeural',
     cloudflareTtsModel: 'elevenlabs/eleven-v3',
     cloudflareVoiceId: 'JBFqnCBsd6RMkjVDRZzb',
-    sarvamApiKey: '',
     hasSarvamKey: false,
     documentaryTtsProvider: 'neural' as TtsProvider,
     documentaryTtsModel: 'edge-neural',
@@ -103,19 +106,23 @@ export default function AdminPage() {
     kidsTtsModel: 'edge-neural',
     kidsTtsVoice: 'hi-IN-SwaraNeural',
     pricingPacks: [] as PricingPack[],
+    masterOutputVideoUrl: '',
+    masterOutputPosterUrl: '',
   });
 
   const loadAdminData = async () => {
     setLoading(true);
     try {
-      const [statsRes, usersRes, jobsRes, settingsRes] = await Promise.all([
+      const [statsRes, usersRes, jobsRes, settingsRes, txRes] = await Promise.all([
         fetch('/api/admin/stats').then((r) => r.json()),
         fetch('/api/admin/users').then((r) => r.json()),
         fetch('/api/admin/jobs').then((r) => r.json()),
         fetch('/api/admin/settings').then((r) => r.json()),
+        fetch('/api/admin/transactions').then((r) => r.json()),
       ]);
 
       if (statsRes.success) setStats(statsRes.stats);
+      if (txRes.success) setTransactions(txRes.transactions || []);
       if (usersRes.success) {
         const loadedUsers: SafeUser[] = usersRes.users || [];
         setUsers(loadedUsers);
@@ -133,12 +140,6 @@ export default function AdminPage() {
           enableStripe: settingsRes.settings.enableStripe ?? true,
           enableRazorpay: settingsRes.settings.enableRazorpay ?? true,
           enableDodo: settingsRes.settings.enableDodo ?? false,
-          stripePublishableKey: settingsRes.settings.stripePublishableKey || '',
-          stripeSecretKey: settingsRes.settings.stripeSecretKey || '',
-          razorpayKeyId: settingsRes.settings.razorpayKeyId || '',
-          razorpayKeySecret: settingsRes.settings.razorpayKeySecret || '',
-          dodoApiKey: settingsRes.settings.dodoApiKey || '',
-          dodoWebhookKey: settingsRes.settings.dodoWebhookKey || '',
           dodoMode: settingsRes.settings.dodoMode || 'test',
           imageProvider: rc.imageProvider || 'cloudflare',
           cloudflareImageModel: rc.cloudflareImageModel || '@cf/black-forest-labs/flux-1-schnell',
@@ -149,7 +150,6 @@ export default function AdminPage() {
           ttsVoice: rc.ttsVoice || 'hi-IN-MadhurNeural',
           cloudflareTtsModel: rc.cloudflareTtsModel || 'elevenlabs/eleven-v3',
           cloudflareVoiceId: rc.cloudflareVoiceId || 'JBFqnCBsd6RMkjVDRZzb',
-          sarvamApiKey: '',
           hasSarvamKey: Boolean(rc.hasSarvamKey),
           documentaryTtsProvider: rc.documentaryTtsProvider || 'neural',
           documentaryTtsModel: rc.documentaryTtsModel || 'edge-neural',
@@ -158,7 +158,10 @@ export default function AdminPage() {
           kidsTtsModel: rc.kidsTtsModel || 'edge-neural',
           kidsTtsVoice: rc.kidsTtsVoice || 'hi-IN-SwaraNeural',
           pricingPacks: settingsRes.settings.pricingPacks || [],
+          masterOutputVideoUrl: rc.masterOutputVideoUrl || '',
+          masterOutputPosterUrl: rc.masterOutputPosterUrl || '',
         });
+        setPaymentConfiguration(settingsRes.paymentConfiguration || { stripeConfigured: false, razorpayConfigured: false, dodoConfigured: false });
       }
     } catch (error: unknown) {
       setActionErr('Failed to load admin data: ' + getErrorMessage(error, 'Unknown error'));
@@ -257,9 +260,6 @@ export default function AdminPage() {
       if (!res.ok || !data.success) throw new Error(data.error);
 
       setActionMsg('SaaS & Payment settings updated successfully!');
-      if (settingsForm.sarvamApiKey) {
-        setSettingsForm(current => ({ ...current, sarvamApiKey: '', hasSarvamKey: true }));
-      }
     } catch (error: unknown) {
       setActionErr(getErrorMessage(error, 'Failed to update settings'));
     }
@@ -276,6 +276,28 @@ export default function AdminPage() {
     if (!selectedCreditUserId || amount === 0) return;
     await handleAdjustCredits(selectedCreditUserId, amount);
   };
+
+  const handleAdminCopy = (text: string, key: string) => {
+    void navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 1800);
+  };
+
+  const filteredTransactions = transactions.filter(tx => {
+    const q = txSearchQuery.trim().toLowerCase();
+    const matchesSearch = !q
+      || tx.id.toLowerCase().includes(q)
+      || tx.userEmail.toLowerCase().includes(q)
+      || tx.userId.toLowerCase().includes(q)
+      || (tx.paymentId && tx.paymentId.toLowerCase().includes(q))
+      || (tx.providerPaymentId && tx.providerPaymentId.toLowerCase().includes(q))
+      || tx.packName.toLowerCase().includes(q);
+
+    const matchesGateway = txGatewayFilter === 'all' || tx.gateway === txGatewayFilter;
+    const matchesStatus = txStatusFilter === 'all' || tx.status === txStatusFilter;
+
+    return matchesSearch && matchesGateway && matchesStatus;
+  });
 
   if (loading) {
     return (
@@ -297,7 +319,7 @@ export default function AdminPage() {
           </div>
           <h2 className="text-xl font-bold text-primary">Admin access required</h2>
           <p className="text-xs leading-5 text-secondary">
-            Sign in with an account that has the administrator role to open the CineDoc control plane.
+            Sign in with an account that has the administrator role to open the KinesisFlow control plane.
           </p>
           <Link
             href="/"
@@ -319,13 +341,14 @@ export default function AdminPage() {
   );
 
   const completedJobs = jobs.filter(job => job.status === 'completed').length;
-  const failedJobs = jobs.filter(job => job.status === 'failed').length;
+  const failedJobs = jobs.filter(job => job.status === 'failed' || job.status === 'cancelled').length;
   const activeJobs = Math.max(0, jobs.length - completedJobs - failedJobs);
   const completionRate = jobs.length > 0 ? Math.round((completedJobs / jobs.length) * 100) : 0;
   const creditsPerMinute = settingsForm.creditsPerScene * 10;
   const tabDetails: Record<AdminTab, { title: string; description: string }> = {
     overview: { title: 'Operations overview', description: 'Monitor platform activity, production health, revenue, and capacity.' },
     users: { title: 'User operations', description: 'Manage access roles, balances, and creator account activity.' },
+    transactions: { title: 'Payment transactions', description: 'Inspect payment orders, processor receipts, customer billing, and transaction IDs.' },
     jobs: { title: 'Production registry', description: 'Review every documentary moving through the rendering pipeline.' },
     showcase: { title: 'Testimonial showcase', description: 'Publish and manage landscape, Reels, and TikTok-format creator videos.' },
     voice: { title: 'Admin Voice Lab', description: 'Test narration providers and promote an approved voice to the platform default.' },
@@ -334,6 +357,7 @@ export default function AdminPage() {
   const adminTabs = [
     { id: 'overview' as const, label: 'Overview', icon: Gauge },
     { id: 'users' as const, label: `Users ${users.length}`, icon: Users },
+    { id: 'transactions' as const, label: `Payments ${transactions.length}`, icon: CreditCard },
     { id: 'jobs' as const, label: `Productions ${jobs.length}`, icon: Film },
     { id: 'showcase' as const, label: 'Showcase', icon: GalleryVerticalEnd },
     { id: 'voice' as const, label: 'Voice Lab', icon: RadioTower },
@@ -359,7 +383,7 @@ export default function AdminPage() {
                 <Shield className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <h1 className="truncate text-base font-extrabold tracking-[-0.03em] text-primary">CineDoc Control</h1>
+                <h1 className="truncate text-base font-extrabold tracking-[-0.03em] text-primary">KinesisFlow Control</h1>
                 <p className="hidden text-[11px] font-medium text-secondary sm:block">Platform operations and production governance</p>
               </div>
             </div>
@@ -453,7 +477,7 @@ export default function AdminPage() {
               <div className="surface-card p-5 rounded-3xl">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Total Users</span>
-                  <Users className="w-4 h-4 text-indigo-400" />
+                  <Users className="h-4 w-4 text-[var(--app-accent)]" />
                 </div>
                 <div className="text-2xl font-black text-white font-mono">{stats?.totalUsers || users.length}</div>
                 <span className="text-[11px] text-gray-500 block mt-1">Platform registered accounts</span>
@@ -484,7 +508,7 @@ export default function AdminPage() {
               <div className="surface-card p-5 rounded-3xl">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Videos Created</span>
-                  <Film className="w-4 h-4 text-purple-400" />
+                  <Film className="h-4 w-4 brand-text" />
                 </div>
                 <div className="text-2xl font-black text-white font-mono">{jobs.length}</div>
                 <span className="text-[11px] text-gray-500 block mt-1">Full 1080p documentaries</span>
@@ -553,16 +577,27 @@ export default function AdminPage() {
 
             {/* Recent Payments Ledger */}
             <div className="surface-card rounded-3xl p-6">
-              <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-amber-400" />
-                <span>Recent Transactions</span>
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-amber-400" />
+                  <span>Recent Transactions</span>
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('transactions')}
+                  className="btn-secondary !py-1 !px-2.5 !text-[11px] flex items-center gap-1.5"
+                >
+                  <span>View All Payments ({transactions.length})</span>
+                  <ExternalLink className="w-3 h-3" />
+                </button>
+              </div>
 
               {stats?.recentTransactions && stats.recentTransactions.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
                       <tr className="border-b border-gray-800 text-gray-400 font-semibold uppercase tracking-wider">
+                        <th className="pb-3">Transaction ID</th>
                         <th className="pb-3">User</th>
                         <th className="pb-3">Pack</th>
                         <th className="pb-3">Amount</th>
@@ -574,7 +609,13 @@ export default function AdminPage() {
                     </thead>
                     <tbody className="divide-y divide-gray-800/60">
                       {stats.recentTransactions.map((tx: PaymentTransaction) => (
-                        <tr key={tx.id} className="hover:bg-gray-850/40">
+                        <tr
+                          key={tx.id}
+                          onClick={() => setSelectedTransaction(tx)}
+                          className="hover:bg-gray-850/60 cursor-pointer transition"
+                          title="Click to view payment details"
+                        >
+                          <td className="py-3 font-mono text-[11px] text-amber-400 font-semibold">{tx.id}</td>
                           <td className="py-3 font-medium text-white">{tx.userEmail}</td>
                           <td className="py-3 text-gray-300">{tx.packName}</td>
                           <td className="py-3 font-mono font-bold text-emerald-400">
@@ -587,7 +628,13 @@ export default function AdminPage() {
                             </span>
                           </td>
                           <td className="py-3">
-                            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                              tx.status === 'completed'
+                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                : tx.status === 'pending'
+                                ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                : 'bg-red-500/10 text-red-400 border-red-500/20'
+                            }`}>
                               {tx.status}
                             </span>
                           </td>
@@ -711,7 +758,7 @@ export default function AdminPage() {
                           <span
                             className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                               u.role === 'admin'
-                                ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                                ? 'bg-[var(--app-accent-soft)] text-[var(--app-accent)] border border-[var(--app-accent)]'
                                 : 'bg-gray-800 text-gray-300 border border-gray-700'
                             }`}
                           >
@@ -781,7 +828,210 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* TAB 3: GLOBAL DOCUMENTARIES */}
+        {/* TAB 3: PAYMENT TRANSACTIONS */}
+        {activeTab === 'transactions' && (
+          <div className="space-y-4">
+            {/* Top Metric Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="surface-card rounded-2xl p-4 sm:p-5">
+                <p className="eyebrow">Total Revenue</p>
+                <div className="mt-2 flex items-baseline gap-2">
+                  <span className="text-xl sm:text-2xl font-black font-mono text-emerald-400">
+                    ₹{transactions.filter(t => t.status === 'completed' && t.currency === 'INR').reduce((sum, t) => sum + t.amount, 0).toLocaleString()}
+                  </span>
+                  <span className="text-xs font-mono text-gray-400">
+                    + ${transactions.filter(t => t.status === 'completed' && t.currency === 'USD').reduce((sum, t) => sum + t.amount, 0).toLocaleString()}
+                  </span>
+                </div>
+                <p className="mt-1 text-[11px] text-secondary">Verified completed purchases</p>
+              </div>
+
+              <div className="surface-card rounded-2xl p-4 sm:p-5">
+                <p className="eyebrow">Completed Payments</p>
+                <p className="mt-2 text-xl sm:text-2xl font-black text-primary">
+                  {transactions.filter(t => t.status === 'completed').length}
+                  <span className="text-xs font-normal text-secondary ml-1.5">/ {transactions.length} total</span>
+                </p>
+                <p className="mt-1 text-[11px] text-secondary">
+                  {transactions.length > 0 ? Math.round((transactions.filter(t => t.status === 'completed').length / transactions.length) * 100) : 0}% success rate
+                </p>
+              </div>
+
+              <div className="surface-card rounded-2xl p-4 sm:p-5">
+                <p className="eyebrow">Credits Delivered</p>
+                <p className="mt-2 text-xl sm:text-2xl font-black font-mono text-amber-400">
+                  +{transactions.filter(t => t.status === 'completed').reduce((sum, t) => sum + t.creditsAdded, 0).toLocaleString()}
+                </p>
+                <p className="mt-1 text-[11px] text-secondary">Added to creator balances</p>
+              </div>
+
+              <div className="surface-card rounded-2xl p-4 sm:p-5">
+                <p className="eyebrow">Pending / Failed</p>
+                <p className="mt-2 text-xl sm:text-2xl font-black text-rose-400">
+                  {transactions.filter(t => t.status !== 'completed').length}
+                </p>
+                <p className="mt-1 text-[11px] text-secondary">Orders awaiting capture or aborted</p>
+              </div>
+            </div>
+
+            {/* Filter and Search Bar */}
+            <div className="surface-card rounded-2xl p-4 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search by Transaction ID, email, order ID, payment ID, pack name..."
+                  value={txSearchQuery}
+                  onChange={(e) => setTxSearchQuery(e.target.value)}
+                  className="app-field !pl-10 text-xs w-full"
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  value={txGatewayFilter}
+                  onChange={(e) => setTxGatewayFilter(e.target.value as any)}
+                  className="app-field text-xs !py-2 !w-auto"
+                >
+                  <option value="all">All Gateways</option>
+                  <option value="razorpay">Razorpay</option>
+                  <option value="stripe">Stripe</option>
+                  <option value="dodo">Dodo Payments</option>
+                  <option value="test">Sandbox Test</option>
+                </select>
+
+                <select
+                  value={txStatusFilter}
+                  onChange={(e) => setTxStatusFilter(e.target.value as any)}
+                  className="app-field text-xs !py-2 !w-auto"
+                >
+                  <option value="all">All Status</option>
+                  <option value="completed">Completed</option>
+                  <option value="pending">Pending</option>
+                  <option value="failed">Failed</option>
+                </select>
+
+                {(txSearchQuery || txGatewayFilter !== 'all' || txStatusFilter !== 'all') && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTxSearchQuery('');
+                      setTxGatewayFilter('all');
+                      setTxStatusFilter('all');
+                    }}
+                    className="btn-secondary !text-xs !py-2 !px-3"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Transactions Table */}
+            <div className="surface-card rounded-3xl p-5 sm:p-6 shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Receipt className="w-4 h-4 text-emerald-400" />
+                  <span>Payment Transactions Registry</span>
+                </h3>
+                <span className="text-xs text-secondary">
+                  Showing {filteredTransactions.length} of {transactions.length} records
+                </span>
+              </div>
+
+              {filteredTransactions.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-gray-800 text-gray-400 font-semibold uppercase tracking-wider">
+                        <th className="pb-3">Transaction ID</th>
+                        <th className="pb-3">User</th>
+                        <th className="pb-3">Pack &amp; Credits</th>
+                        <th className="pb-3">Amount</th>
+                        <th className="pb-3">Gateway</th>
+                        <th className="pb-3">Provider Reference</th>
+                        <th className="pb-3">Status</th>
+                        <th className="pb-3">Date</th>
+                        <th className="pb-3 text-right">Details</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800/60">
+                      {filteredTransactions.map(tx => (
+                        <tr
+                          key={tx.id}
+                          onClick={() => setSelectedTransaction(tx)}
+                          className="hover:bg-gray-850/60 cursor-pointer transition group"
+                          title="Click to view payment details"
+                        >
+                          <td className="py-3 font-mono font-bold text-amber-400 text-[11px] whitespace-nowrap">
+                            <div className="flex items-center gap-1.5">
+                              <span>{tx.id}</span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAdminCopy(tx.id, tx.id);
+                                }}
+                                className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white p-0.5 transition"
+                                title="Copy Transaction ID"
+                              >
+                                {copiedKey === tx.id ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                              </button>
+                            </div>
+                          </td>
+                          <td className="py-3">
+                            <p className="font-medium text-white truncate max-w-44">{tx.userEmail}</p>
+                            <p className="font-mono text-[10px] text-gray-500 truncate max-w-44">{tx.userId}</p>
+                          </td>
+                          <td className="py-3">
+                            <span className="font-semibold text-gray-200">{tx.packName}</span>
+                            <span className="block font-mono text-[10px] text-amber-400 font-bold">+{tx.creditsAdded} credits</span>
+                          </td>
+                          <td className="py-3 font-mono font-bold text-emerald-400 whitespace-nowrap">
+                            {tx.currency === 'INR' ? `₹${tx.amount}` : `$${tx.amount}`}
+                          </td>
+                          <td className="py-3">
+                            <span className="px-2 py-0.5 rounded-full bg-gray-800 border border-gray-700 text-[10px] font-bold uppercase whitespace-nowrap">
+                              {tx.gateway}
+                            </span>
+                          </td>
+                          <td className="py-3 font-mono text-[10px] text-gray-400 truncate max-w-36">
+                            {tx.providerPaymentId || tx.paymentId || '—'}
+                          </td>
+                          <td className="py-3">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap ${
+                              tx.status === 'completed'
+                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                : tx.status === 'pending'
+                                ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                : 'bg-red-500/10 text-red-400 border-red-500/20'
+                            }`}>
+                              {tx.status}
+                            </span>
+                          </td>
+                          <td className="py-3 text-gray-500 whitespace-nowrap">
+                            {new Date(tx.createdAt).toLocaleDateString()}
+                          </td>
+                          <td className="py-3 text-right">
+                            <span className="btn-secondary !py-1 !px-2.5 !text-[10px] font-bold whitespace-nowrap group-hover:border-[var(--app-brand)]">
+                              Inspect &rarr;
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="py-12 text-center text-gray-500 text-xs">
+                  No payment transactions matched your filters.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: GLOBAL DOCUMENTARIES */}
         {activeTab === 'jobs' && (
           <div className="bg-gray-900 border border-gray-800 rounded-3xl overflow-hidden shadow-xl">
             <div className="p-4 border-b border-gray-800 flex items-center justify-between">
@@ -862,7 +1112,7 @@ export default function AdminPage() {
                 <h3 className="text-base font-extrabold text-primary">Provider-safe narration testing</h3>
                 <p className="mt-1 text-xs leading-5 text-secondary">Preview voices here before changing the production default used by every documentary.</p>
               </div>
-              <span className="flex w-fit items-center gap-2 rounded-full bg-purple-500/10 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.12em] text-purple-600 dark:text-purple-300">
+              <span className="accent-soft flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.12em]">
                 <Shield className="h-3.5 w-3.5" /> Admin only
               </span>
             </div>
@@ -874,18 +1124,18 @@ export default function AdminPage() {
         {activeTab === 'settings' && (
           <form onSubmit={handleSaveSettings} className="space-y-6 max-w-4xl">
             {/* Global AI Model & Provider Switching (Admin Master Control) */}
-            <div className="bg-gray-900 border border-purple-500/30 rounded-3xl p-6 space-y-6 shadow-2xl shadow-purple-950/20">
+            <div className="surface-raised space-y-6 rounded-3xl p-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-800 pb-4">
                 <div>
                   <h3 className="text-base font-bold text-white flex items-center gap-2">
-                    <Cpu className="w-5 h-5 text-purple-400" />
+                  <Cpu className="h-5 w-5 text-[var(--app-accent)]" />
                     <span>Global AI Generation Providers & Models</span>
                   </h3>
                   <p className="text-xs text-gray-400 mt-0.5">
                     Changes here immediately control the AI engines used by all users generating documentaries across the entire platform.
                   </p>
                 </div>
-                <span className="self-start sm:self-auto text-[10px] font-bold px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 uppercase tracking-wider">
+                <span className="accent-soft self-start rounded-full border border-[var(--app-accent)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider sm:self-auto">
                   Live Engine Pipeline
                 </span>
               </div>
@@ -904,14 +1154,14 @@ export default function AdminPage() {
                     onClick={() => setSettingsForm({ ...settingsForm, imageProvider: 'cloudflare' })}
                     className={`p-3.5 rounded-2xl border text-left transition flex flex-col justify-between ${
                       settingsForm.imageProvider === 'cloudflare'
-                        ? 'bg-purple-950/40 border-purple-500 ring-1 ring-purple-500 text-white'
+                        ? 'bg-[var(--app-accent-soft)] border-[var(--app-accent)] ring-1 ring-[var(--app-accent)] text-primary'
                         : 'bg-gray-950/60 border-gray-800 text-gray-400 hover:border-gray-700'
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-white">Cloudflare Workers AI</span>
                       {settingsForm.imageProvider === 'cloudflare' && (
-                        <Check className="w-4 h-4 text-purple-400" />
+                        <Check className="h-4 w-4 text-[var(--app-accent)]" />
                       )}
                     </div>
                     <span className="text-[11px] text-gray-400 mt-2">FLUX-1 Schnell / SDXL. High throughput, zero GPU timeouts.</span>
@@ -922,14 +1172,14 @@ export default function AdminPage() {
                     onClick={() => setSettingsForm({ ...settingsForm, imageProvider: 'openrouter' })}
                     className={`p-3.5 rounded-2xl border text-left transition flex flex-col justify-between ${
                       settingsForm.imageProvider === 'openrouter'
-                        ? 'bg-purple-950/40 border-purple-500 ring-1 ring-purple-500 text-white'
+                        ? 'bg-[var(--app-accent-soft)] border-[var(--app-accent)] ring-1 ring-[var(--app-accent)] text-primary'
                         : 'bg-gray-950/60 border-gray-800 text-gray-400 hover:border-gray-700'
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-white">OpenRouter / AgentRouter</span>
                       {settingsForm.imageProvider === 'openrouter' && (
-                        <Check className="w-4 h-4 text-purple-400" />
+                        <Check className="h-4 w-4 text-[var(--app-accent)]" />
                       )}
                     </div>
                     <span className="text-[11px] text-gray-400 mt-2">Seedream 5.0 Flash / Midjourney style photorealism.</span>
@@ -940,14 +1190,14 @@ export default function AdminPage() {
                     onClick={() => setSettingsForm({ ...settingsForm, imageProvider: 'puter' })}
                     className={`p-3.5 rounded-2xl border text-left transition flex flex-col justify-between ${
                       settingsForm.imageProvider === 'puter'
-                        ? 'bg-purple-950/40 border-purple-500 ring-1 ring-purple-500 text-white'
+                        ? 'bg-[var(--app-accent-soft)] border-[var(--app-accent)] ring-1 ring-[var(--app-accent)] text-primary'
                         : 'bg-gray-950/60 border-gray-800 text-gray-400 hover:border-gray-700'
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-white">Puter.js Cloud</span>
                       {settingsForm.imageProvider === 'puter' && (
-                        <Check className="w-4 h-4 text-purple-400" />
+                        <Check className="h-4 w-4 text-[var(--app-accent)]" />
                       )}
                     </div>
                     <span className="text-[11px] text-gray-400 mt-2">Unlimited free community tier image rendering.</span>
@@ -962,7 +1212,7 @@ export default function AdminPage() {
                     <select
                       value={settingsForm.cloudflareImageModel}
                       onChange={(e) => setSettingsForm({ ...settingsForm, cloudflareImageModel: e.target.value })}
-                      className="w-full bg-gray-950/80 border border-gray-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500 font-mono"
+                      className="app-field px-3.5 py-2.5 font-mono text-xs"
                     >
                       <option value="@cf/black-forest-labs/flux-1-schnell">@cf/black-forest-labs/flux-1-schnell (Recommended - Fast 1080p Cinematic)</option>
                       <option value="@cf/stabilityai/stable-diffusion-xl-base-1.0">@cf/stabilityai/stable-diffusion-xl-base-1.0 (High Detail SDXL)</option>
@@ -981,7 +1231,7 @@ export default function AdminPage() {
                       value={settingsForm.imageModel}
                       onChange={(e) => setSettingsForm({ ...settingsForm, imageModel: e.target.value })}
                       placeholder="bytedance-seed/seedream-5-0-flash"
-                      className="w-full bg-gray-950/80 border border-gray-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500 font-mono"
+                      className="app-field px-3.5 py-2.5 font-mono text-xs"
                     />
                   </div>
                 )}
@@ -1003,7 +1253,7 @@ export default function AdminPage() {
                     <select
                       value={settingsForm.textModel}
                       onChange={(e) => setSettingsForm({ ...settingsForm, textModel: e.target.value })}
-                      className="w-full bg-gray-950/80 border border-gray-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500 font-mono"
+                      className="app-field px-3.5 py-2.5 font-mono text-xs"
                     >
                       <option value="gpt-5.6-sol">gpt-5.6-sol (Default - Cinematic narrative flow)</option>
                       <option value="anthropic/claude-3.5-sonnet">anthropic/claude-3.5-sonnet (Elite Storytelling & Depth)</option>
@@ -1021,7 +1271,7 @@ export default function AdminPage() {
                       placeholder="e.g. openai/gpt-4o or deepseek/deepseek-chat"
                       value={settingsForm.textModel}
                       onChange={(e) => setSettingsForm({ ...settingsForm, textModel: e.target.value })}
-                      className="w-full bg-gray-950/80 border border-gray-800 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-purple-500 font-mono"
+                      className="app-field px-3.5 py-2 font-mono text-xs"
                     />
                   </div>
                 </div>
@@ -1184,7 +1434,7 @@ export default function AdminPage() {
                     onChange={(e) => setSettingsForm({ ...settingsForm, enableTestMode: e.target.checked })}
                     className="rounded bg-gray-950 border-gray-800 text-amber-500 focus:ring-0"
                   />
-                  <span className="text-purple-300 font-semibold">Enable Instant Sandbox Payments</span>
+                  <span className="font-semibold text-[var(--app-accent)]">Enable instant sandbox payments</span>
                 </label>
               </div>
 
@@ -1205,30 +1455,7 @@ export default function AdminPage() {
                     {settingsForm.enableStripe ? 'Stripe active' : 'Stripe paused'}
                   </label>
                 </div>
-                <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${settingsForm.enableStripe ? '' : 'opacity-50'}`}>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-1">Publishable Key</label>
-                    <input
-                      type="text"
-                      placeholder="pk_test_..."
-                      value={settingsForm.stripePublishableKey}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, stripePublishableKey: e.target.value })}
-                      disabled={!settingsForm.enableStripe}
-                      className="w-full bg-gray-950/70 border border-gray-800 rounded-xl px-3.5 py-2 text-xs text-white font-mono focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-1">Secret Key</label>
-                    <input
-                      type="password"
-                      placeholder="sk_test_..."
-                      value={settingsForm.stripeSecretKey}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, stripeSecretKey: e.target.value })}
-                      disabled={!settingsForm.enableStripe}
-                      className="w-full bg-gray-950/70 border border-gray-800 rounded-xl px-3.5 py-2 text-xs text-white font-mono focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                </div>
+                <div className="surface-soft rounded-xl p-3 text-xs text-secondary"><strong className={paymentConfiguration.stripeConfigured ? 'text-emerald-500' : 'text-amber-500'}>{paymentConfiguration.stripeConfigured ? 'Environment configured' : 'Environment keys missing'}</strong><span className="ml-2">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY and STRIPE_SECRET_KEY</span></div>
               </div>
 
               {/* Razorpay */}
@@ -1248,30 +1475,7 @@ export default function AdminPage() {
                     {settingsForm.enableRazorpay ? 'Razorpay active' : 'Razorpay paused'}
                   </label>
                 </div>
-                <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${settingsForm.enableRazorpay ? '' : 'opacity-50'}`}>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-1">Key ID</label>
-                    <input
-                      type="text"
-                      placeholder="rzp_test_..."
-                      value={settingsForm.razorpayKeyId}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, razorpayKeyId: e.target.value })}
-                      disabled={!settingsForm.enableRazorpay}
-                      className="w-full bg-gray-950/70 border border-gray-800 rounded-xl px-3.5 py-2 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-1">Key Secret</label>
-                    <input
-                      type="password"
-                      placeholder="Razorpay Secret..."
-                      value={settingsForm.razorpayKeySecret}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, razorpayKeySecret: e.target.value })}
-                      disabled={!settingsForm.enableRazorpay}
-                      className="w-full bg-gray-950/70 border border-gray-800 rounded-xl px-3.5 py-2 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
-                    />
-                  </div>
-                </div>
+                <div className="surface-soft rounded-xl p-3 text-xs text-secondary"><strong className={paymentConfiguration.razorpayConfigured ? 'text-emerald-500' : 'text-amber-500'}>{paymentConfiguration.razorpayConfigured ? 'Environment configured' : 'Environment keys missing'}</strong><span className="ml-2">RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET</span></div>
               </div>
 
               {/* Dodo Payments */}
@@ -1287,12 +1491,67 @@ export default function AdminPage() {
                   </label>
                 </div>
                 <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${settingsForm.enableDodo ? '' : 'opacity-50'}`}>
-                  <label className="block text-xs font-semibold text-gray-400">API key<input type="password" value={settingsForm.dodoApiKey} onChange={(e) => setSettingsForm({ ...settingsForm, dodoApiKey: e.target.value })} disabled={!settingsForm.enableDodo} placeholder="Dodo API key" className="mt-1 w-full rounded-xl border border-gray-800 bg-gray-950/70 px-3.5 py-2 text-xs text-white font-mono focus:border-emerald-500 focus:outline-none" /></label>
-                  <label className="block text-xs font-semibold text-gray-400">Webhook signing key<input type="password" value={settingsForm.dodoWebhookKey} onChange={(e) => setSettingsForm({ ...settingsForm, dodoWebhookKey: e.target.value })} disabled={!settingsForm.enableDodo} placeholder="whsec_..." className="mt-1 w-full rounded-xl border border-gray-800 bg-gray-950/70 px-3.5 py-2 text-xs text-white font-mono focus:border-emerald-500 focus:outline-none" /></label>
+                  <div className="surface-soft rounded-xl p-3 text-xs text-secondary sm:col-span-2"><strong className={paymentConfiguration.dodoConfigured ? 'text-emerald-500' : 'text-amber-500'}>{paymentConfiguration.dodoConfigured ? 'Environment configured' : 'Environment keys missing'}</strong><span className="ml-2">DODO_PAYMENTS_API_KEY and DODO_PAYMENTS_WEBHOOK_KEY</span></div>
                   <label className="block text-xs font-semibold text-gray-400">Environment<select value={settingsForm.dodoMode} onChange={(e) => setSettingsForm({ ...settingsForm, dodoMode: e.target.value as 'test' | 'live' })} disabled={!settingsForm.enableDodo} className="mt-1 w-full rounded-xl border border-gray-800 bg-gray-950/70 px-3.5 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"><option value="test">Test mode</option><option value="live">Live mode</option></select></label>
                   <div className="rounded-xl border border-gray-800 bg-gray-950/60 p-3 text-[10px] leading-5 text-gray-400"><strong className="block text-gray-200">Webhook endpoint</strong><code>/api/webhooks/dodo</code><br />Listen for payment.succeeded, payment.failed, and payment.cancelled.</div>
                 </div>
               </div>
+            </div>
+
+            {/* Master Output Video (Shown to Non-Logged In Visitors) */}
+            <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <Video className="w-4 h-4 text-amber-400" />
+                    <span>Homepage Master Output Demo Video</span>
+                  </h3>
+                  <p className="mt-1 text-xs text-gray-400">
+                    Displayed in the Master output card on the homepage when visitors are not logged in. Once signed in, it switches to their own account&apos;s production.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 pt-2">
+                <label className="block text-xs font-semibold text-gray-300">
+                  Master Video URL (MP4 / WebM, 3-5 seconds recommended)
+                  <input
+                    type="url"
+                    value={settingsForm.masterOutputVideoUrl}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, masterOutputVideoUrl: e.target.value })}
+                    placeholder="https://cdn.example.com/demo-master-3s.mp4"
+                    className="mt-1.5 w-full rounded-xl border border-gray-800 bg-gray-950/70 px-3.5 py-2.5 text-xs text-white focus:border-amber-500 focus:outline-none"
+                  />
+                </label>
+
+                <label className="block text-xs font-semibold text-gray-300">
+                  Master Poster Image URL (Optional fallback thumbnail)
+                  <input
+                    type="url"
+                    value={settingsForm.masterOutputPosterUrl}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, masterOutputPosterUrl: e.target.value })}
+                    placeholder="https://cdn.example.com/demo-poster.jpg"
+                    className="mt-1.5 w-full rounded-xl border border-gray-800 bg-gray-950/70 px-3.5 py-2.5 text-xs text-white focus:border-amber-500 focus:outline-none"
+                  />
+                </label>
+              </div>
+
+              {settingsForm.masterOutputVideoUrl && (
+                <div className="pt-2">
+                  <p className="text-[11px] font-bold text-gray-400 mb-2">Preview</p>
+                  <div className="relative aspect-[16/8] max-w-sm rounded-xl overflow-hidden bg-black border border-gray-800">
+                    <video
+                      src={settingsForm.masterOutputVideoUrl}
+                      poster={settingsForm.masterOutputPosterUrl || undefined}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <button
@@ -1303,6 +1562,184 @@ export default function AdminPage() {
               <span>Save SaaS & Payment Settings</span>
             </button>
           </form>
+        )}
+
+        {/* ADMIN PAYMENT TRANSACTION DETAILS MODAL */}
+        {selectedTransaction && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-150">
+            <div className="modal-panel w-full max-w-xl rounded-3xl p-6 sm:p-7 shadow-2xl space-y-5 max-h-[92vh] overflow-y-auto">
+              <div className="flex items-start justify-between border-b border-theme pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500">
+                    <Receipt className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-extrabold text-primary">Payment Transaction Details</h3>
+                    <p className="text-xs text-secondary">Audited customer payment record</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedTransaction(null)}
+                  className="icon-button"
+                  aria-label="Close details"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Status and Amount Card */}
+              <div className="rounded-2xl surface-soft p-4 border border-theme flex items-center justify-between">
+                <div>
+                  <p className="eyebrow">Plan &amp; Credits</p>
+                  <p className="text-sm font-bold text-primary mt-1">{selectedTransaction.packName}</p>
+                  <p className="text-xs font-mono font-bold brand-text mt-0.5">+{selectedTransaction.creditsAdded} Production Credits</p>
+                </div>
+                <div className="text-right">
+                  <p className="eyebrow">Amount Charged</p>
+                  <p className="text-lg font-black font-mono text-emerald-600 dark:text-emerald-400 mt-1">
+                    {selectedTransaction.currency === 'INR' ? `₹${selectedTransaction.amount}` : `$${selectedTransaction.amount}`}
+                  </p>
+                  <span className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${
+                    selectedTransaction.status === 'completed'
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                      : selectedTransaction.status === 'pending'
+                      ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                      : 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20'
+                  }`}>
+                    {selectedTransaction.status}
+                  </span>
+                </div>
+              </div>
+
+              {/* Key-Value Details */}
+              <div className="space-y-2.5 text-xs">
+                {/* Transaction ID */}
+                <div className="flex items-center justify-between rounded-xl surface-soft p-3 border border-theme">
+                  <span className="text-secondary font-medium">Transaction ID:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-bold brand-text select-all">{selectedTransaction.id}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleAdminCopy(selectedTransaction.id, 'tx_id')}
+                      className="p-1 rounded-lg border border-theme surface-raised hover:border-[var(--app-brand)] text-secondary hover:text-primary transition"
+                      title="Copy Transaction ID"
+                    >
+                      {copiedKey === 'tx_id' ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Gateway Order ID */}
+                {selectedTransaction.paymentId && (
+                  <div className="flex items-center justify-between rounded-xl surface-soft p-3 border border-theme">
+                    <span className="text-secondary font-medium">Gateway Order ID:</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-primary select-all">{selectedTransaction.paymentId}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleAdminCopy(selectedTransaction.paymentId!, 'payment_id')}
+                        className="p-1 rounded-lg border border-theme surface-raised hover:border-[var(--app-brand)] text-secondary hover:text-primary transition"
+                        title="Copy Gateway Order ID"
+                      >
+                        {copiedKey === 'payment_id' ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Provider Payment ID */}
+                {selectedTransaction.providerPaymentId && (
+                  <div className="flex items-center justify-between rounded-xl surface-soft p-3 border border-theme">
+                    <span className="text-secondary font-medium">Provider Payment ID:</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400 select-all">{selectedTransaction.providerPaymentId}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleAdminCopy(selectedTransaction.providerPaymentId!, 'prov_id')}
+                        className="p-1 rounded-lg border border-theme surface-raised hover:border-[var(--app-brand)] text-secondary hover:text-primary transition"
+                        title="Copy Provider Payment ID"
+                      >
+                        {copiedKey === 'prov_id' ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Customer Email */}
+                <div className="flex items-center justify-between rounded-xl surface-soft p-3 border border-theme">
+                  <span className="text-secondary font-medium">Customer Email:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-primary">{selectedTransaction.userEmail}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleAdminCopy(selectedTransaction.userEmail, 'user_email')}
+                      className="p-1 rounded-lg border border-theme surface-raised hover:border-[var(--app-brand)] text-secondary hover:text-primary transition"
+                      title="Copy Customer Email"
+                    >
+                      {copiedKey === 'user_email' ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Customer UUID */}
+                <div className="flex items-center justify-between rounded-xl surface-soft p-3 border border-theme">
+                  <span className="text-secondary font-medium">Customer User ID:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[11px] text-secondary truncate max-w-56 select-all">{selectedTransaction.userId}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleAdminCopy(selectedTransaction.userId, 'user_id')}
+                      className="p-1 rounded-lg border border-theme surface-raised hover:border-[var(--app-brand)] text-secondary hover:text-primary transition"
+                      title="Copy User ID"
+                    >
+                      {copiedKey === 'user_id' ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Gateway */}
+                <div className="flex items-center justify-between py-2 px-3 border-b border-theme/60">
+                  <span className="text-secondary font-medium">Payment Processor:</span>
+                  <span className="font-bold text-primary uppercase tracking-wider">{selectedTransaction.gateway}</span>
+                </div>
+
+                {/* Pack ID */}
+                <div className="flex items-center justify-between py-2 px-3 border-b border-theme/60">
+                  <span className="text-secondary font-medium">Pack ID:</span>
+                  <span className="font-mono text-secondary">{selectedTransaction.packId}</span>
+                </div>
+
+                {/* Timestamp */}
+                <div className="flex items-center justify-between py-2 px-3 border-b border-theme/60">
+                  <span className="text-secondary font-medium">Transaction Date:</span>
+                  <span className="font-semibold text-primary">{new Date(selectedTransaction.createdAt).toLocaleString()}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery(selectedTransaction.userEmail);
+                    setActiveTab('users');
+                    setSelectedTransaction(null);
+                  }}
+                  className="btn-secondary flex-1 justify-center !min-h-11 text-xs font-bold"
+                >
+                  View User in Users Tab
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedTransaction(null)}
+                  className="btn-primary flex-1 justify-center !min-h-11 text-xs font-bold"
+                >
+                  Close Details
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>

@@ -4,6 +4,11 @@ import { DbManager } from '@/lib/db';
 import { getConfig, saveConfig } from '@/lib/config';
 import { AppConfig, PricingPack, SaasSettings } from '@/lib/types';
 import { minutesForCredits } from '@/lib/credits';
+import { requireSameOrigin } from '@/lib/security/origin';
+import { rateLimit } from '@/lib/security/rate-limit';
+import { parseJsonBody } from '@/lib/security/request';
+import { adminSettingsSchema } from '@/lib/security/schemas';
+import { secureErrorResponse } from '@/lib/security/errors';
 
 function publicRuntimeConfig(config: AppConfig) {
   return {
@@ -23,6 +28,8 @@ function publicRuntimeConfig(config: AppConfig) {
     kidsTtsModel: config.kidsTtsModel,
     kidsTtsVoice: config.kidsTtsVoice,
     testMode: config.testMode,
+    masterOutputVideoUrl: config.masterOutputVideoUrl || '',
+    masterOutputPosterUrl: config.masterOutputPosterUrl || '',
     agentRouterBaseUrl: config.agentRouterBaseUrl,
     hasAgentRouterKey: Boolean(config.agentRouterApiKey),
     hasOpenRouterKey: Boolean(config.openRouterApiKey),
@@ -32,42 +39,60 @@ function publicRuntimeConfig(config: AppConfig) {
   };
 }
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Unexpected settings error';
+function safeSettings(settings: SaasSettings) {
+  return {
+    ...settings,
+    stripePublishableKey: '', stripeSecretKey: '', razorpayKeyId: '', razorpayKeySecret: '', dodoApiKey: '', dodoWebhookKey: '',
+  };
+}
+
+function paymentConfiguration(settings: SaasSettings) {
+  return {
+    stripeConfigured: Boolean(settings.stripePublishableKey && settings.stripeSecretKey),
+    razorpayConfigured: Boolean(settings.razorpayKeyId && settings.razorpayKeySecret),
+    dodoConfigured: Boolean(settings.dodoApiKey && settings.dodoWebhookKey),
+  };
 }
 
 export async function GET(req: NextRequest) {
   try {
+    const limited = await rateLimit(req, { bucket: 'admin-settings-read', limit: 60, windowSeconds: 60, failClosed: false });
+    if (limited) return limited;
     await SessionManager.requireAdmin(req);
     const settings = await DbManager.getSettings();
     return NextResponse.json({
       success: true,
-      settings,
+      settings: safeSettings(settings),
+      paymentConfiguration: paymentConfiguration(settings),
       runtimeConfig: publicRuntimeConfig(await getConfig()),
     });
   } catch (error: unknown) {
-    const message = errorMessage(error);
-    return NextResponse.json(
-      { success: false, error: message },
-      { status: message.includes('Forbidden') ? 403 : 401 }
-    );
+    return secureErrorResponse(error, 'Unable to load settings.');
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
+    requireSameOrigin(req);
+    const limited = await rateLimit(req, { bucket: 'admin-settings-write', limit: 20, windowSeconds: 300, failClosed: true });
+    if (limited) return limited;
     await SessionManager.requireAdmin(req);
-    const body = await req.json() as Record<string, unknown>;
+    const body = await parseJsonBody(req, adminSettingsSchema, 128 * 1024);
     const configUpdates: Partial<AppConfig> = {};
 
     const stringConfigKeys = [
       'cloudflareImageModel', 'imageModel', 'textModel', 'ttsModel', 'ttsVoice',
-      'cloudflareTtsModel', 'cloudflareVoiceId', 'agentRouterApiKey',
-      'openRouterApiKey', 'cloudflareAccountId', 'cloudflareApiToken', 'sarvamApiKey',
+      'cloudflareTtsModel', 'cloudflareVoiceId',
       'documentaryTtsModel', 'documentaryTtsVoice', 'kidsTtsModel', 'kidsTtsVoice',
     ] as const;
     for (const key of stringConfigKeys) {
       if (typeof body[key] === 'string' && body[key]) configUpdates[key] = body[key];
+    }
+    if (typeof body.masterOutputVideoUrl === 'string') {
+      configUpdates.masterOutputVideoUrl = body.masterOutputVideoUrl.trim();
+    }
+    if (typeof body.masterOutputPosterUrl === 'string') {
+      configUpdates.masterOutputPosterUrl = body.masterOutputPosterUrl.trim();
     }
     if (['cloudflare', 'openrouter', 'puter'].includes(String(body.imageProvider))) {
       configUpdates.imageProvider = body.imageProvider as AppConfig['imageProvider'];
@@ -81,7 +106,6 @@ export async function POST(req: NextRequest) {
     if (['neural', 'openrouter', 'cloudflare', 'sarvam'].includes(String(body.kidsTtsProvider))) {
       configUpdates.kidsTtsProvider = body.kidsTtsProvider as AppConfig['kidsTtsProvider'];
     }
-    if (typeof body.testMode === 'boolean') configUpdates.testMode = body.testMode;
     const currentRuntime = await getConfig();
     const sarvamSelected = configUpdates.documentaryTtsProvider === 'sarvam' || configUpdates.kidsTtsProvider === 'sarvam';
     if (sarvamSelected && !configUpdates.sarvamApiKey && !currentRuntime.sarvamApiKey) {
@@ -98,9 +122,6 @@ export async function POST(req: NextRequest) {
     if (typeof body.enableRazorpay === 'boolean') settingsUpdates.enableRazorpay = body.enableRazorpay;
     if (typeof body.enableDodo === 'boolean') settingsUpdates.enableDodo = body.enableDodo;
 
-    for (const key of ['stripePublishableKey', 'stripeSecretKey', 'razorpayKeyId', 'razorpayKeySecret', 'dodoApiKey', 'dodoWebhookKey'] as const) {
-      if (typeof body[key] === 'string') settingsUpdates[key] = body[key];
-    }
     if (body.dodoMode === 'test' || body.dodoMode === 'live') settingsUpdates.dodoMode = body.dodoMode;
 
     if (Array.isArray(body.pricingPacks)) {
@@ -130,12 +151,11 @@ export async function POST(req: NextRequest) {
     const updated = await DbManager.updateSettings(settingsUpdates);
     return NextResponse.json({
       success: true,
-      settings: updated,
+      settings: safeSettings(updated),
+      paymentConfiguration: paymentConfiguration(updated),
       runtimeConfig: publicRuntimeConfig(await getConfig()),
     });
   } catch (error: unknown) {
-    const message = errorMessage(error);
-    const status = message.includes('Authentication required') ? 401 : message.includes('Forbidden') ? 403 : 400;
-    return NextResponse.json({ success: false, error: message }, { status });
+    return secureErrorResponse(error, 'Unable to update settings.');
   }
 }

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { StorageManager } from '@/lib/storage';
 import { SessionManager } from '@/lib/auth/session';
+import { rateLimit } from '@/lib/security/rate-limit';
+import { parseJobId } from '@/lib/security/schemas';
 
 function errorStatus(err: unknown): number {
   const message = err instanceof Error ? err.message : '';
@@ -15,12 +17,14 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const id = parseJobId((await params).id);
     const job = await StorageManager.loadJob(id);
     if (!job) {
       return NextResponse.json({ success: false, error: 'Job not found' }, { status: 404 });
     }
-    await SessionManager.requireJobAccess(req, job);
+    const user = await SessionManager.requireJobAccess(req, job);
+    const limited = await rateLimit(req, { bucket: 'job-read', limit: 180, windowSeconds: 60, failClosed: false, discriminator: user.id });
+    if (limited) return limited;
     return NextResponse.json({ success: true, job });
   } catch (err: unknown) {
     return NextResponse.json({ success: false, error: err instanceof Error ? err.message : 'Failed to load job' }, { status: errorStatus(err) });
@@ -32,15 +36,20 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const id = parseJobId((await params).id);
     const job = await StorageManager.loadJob(id);
     if (!job) {
       return NextResponse.json({ success: false, error: 'Job not found' }, { status: 404 });
     }
-    await SessionManager.requireJobAccess(req, job);
-    if (job.userId && job.creditStatus === 'reserved') {
+    const user = await SessionManager.requireJobAccess(req, job);
+    const limited = await rateLimit(req, { bucket: 'job-delete', limit: 10, windowSeconds: 3600, failClosed: true, discriminator: user.id });
+    if (limited) return limited;
+    if (!['completed', 'failed', 'cancelled'].includes(job.status)) {
+      return NextResponse.json({ success: false, error: 'Stop this production before deleting it.' }, { status: 409 });
+    }
+    if (job.billing?.enabled && job.billing.status !== 'settled') {
       const { DbManager } = await import('@/lib/db');
-      await DbManager.releaseReservedCredits(job.userId, job.creditCost || 0);
+      await DbManager.releaseJobCredits(job.id);
     }
     await StorageManager.deleteJob(id);
     return NextResponse.json({ success: true });

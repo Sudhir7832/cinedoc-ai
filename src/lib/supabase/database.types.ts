@@ -35,7 +35,7 @@ export interface Database {
       }>;
       testimonials: Table<{
         id: string; title: string; description: string; video_url: string; poster_url: string | null;
-        format: string; quote: string | null; attribution: string | null; published: boolean; created_at: string;
+        format: string; category: string; quote: string | null; attribution: string | null; published: boolean; created_at: string;
       }>;
     };
     Views: Record<string, never>;

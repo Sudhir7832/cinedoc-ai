@@ -5,7 +5,7 @@ import { SignInPageClient } from '@/components/SignInPageClient';
 
 export const metadata: Metadata = {
   title: 'Sign In',
-  description: 'Sign in to your CineDoc AI production workspace.',
+  description: 'Sign in to your KinesisFlow video production workspace.',
   robots: { index: false, follow: false },
 };
 

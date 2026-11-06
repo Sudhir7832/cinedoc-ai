@@ -3,6 +3,10 @@ import fs from 'fs';
 import path from 'path';
 import { StorageManager } from '@/lib/storage';
 import { SessionManager } from '@/lib/auth/session';
+import { rateLimit } from '@/lib/security/rate-limit';
+import { parseJobId } from '@/lib/security/schemas';
+import { requireBoundedContentLength } from '@/lib/security/request';
+import { validateImage } from '@/lib/security/image';
 
 const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 
@@ -11,10 +15,12 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const id = parseJobId((await params).id);
     const job = await StorageManager.loadJob(id);
     if (!job) return NextResponse.json({ error: 'Job not found' }, { status: 404 });
-    await SessionManager.requireJobAccess(req, job);
+    const user = await SessionManager.requireJobAccess(req, job);
+    const limited = await rateLimit(req, { bucket: 'scene-image-read', limit: 300, windowSeconds: 60, failClosed: false, discriminator: user.id });
+    if (limited) return limited;
 
     const sceneNumber = Number(req.nextUrl.searchParams.get('sceneNumber'));
     const scene = job.scenes.find(item => item.sceneNumber === sceneNumber);
@@ -53,12 +59,15 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const id = parseJobId((await params).id);
     const job = await StorageManager.loadJob(id);
     if (!job) {
       return NextResponse.json({ success: false, error: 'Job not found' }, { status: 404 });
     }
-    await SessionManager.requireJobAccess(req, job);
+    const user = await SessionManager.requireJobAccess(req, job);
+    const limited = await rateLimit(req, { bucket: 'scene-image-upload', limit: 10, windowSeconds: 600, failClosed: true, discriminator: user.id });
+    if (limited) return limited;
+    requireBoundedContentLength(req, MAX_IMAGE_BYTES + 64 * 1024);
 
     const formData = await req.formData();
     const sceneNumberStr = formData.get('sceneNumber');
@@ -96,6 +105,7 @@ export async function POST(
     // Convert uploaded file to Buffer
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+    validateImage(buffer, { maxWidth: 8192, maxHeight: 8192, maxPixels: 40_000_000 });
 
     const relativeUrl = StorageManager.saveImageFile(id, sceneNumber, buffer);
     job.scenes[sceneIndex].imagePath = relativeUrl;

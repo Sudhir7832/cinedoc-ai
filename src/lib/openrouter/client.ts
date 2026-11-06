@@ -1,4 +1,5 @@
 import { getConfig } from '../config';
+import { fetchAllowedOutboundUrl } from '../security/outbound-url';
 
 export interface OpenRouterErrorDetails {
   status: number;
@@ -126,6 +127,8 @@ export class OpenRouterClient {
     const model = params.model || config.textModel || 'gpt-5.6-sol';
     const isAgentRouter = Boolean(config.agentRouterApiKey);
 
+    const isSolModel = /gpt-[56]\.\d+-sol/i.test(model);
+
     // Primary path for Agent Router (using /v1/responses which gpt-5.6-sol and gpt-6.1-sol require)
     if (isAgentRouter) {
       const baseUrl = (config.agentRouterBaseUrl || 'https://agentrouter.org/v1').replace(/\/+$/, '');
@@ -144,21 +147,46 @@ export class OpenRouterClient {
             model,
             input: combinedInput,
           }),
-          signal: AbortSignal.timeout(120000), // 2 min
+          signal: AbortSignal.timeout(360000), // 6 min timeout for deep reasoning & 3-5 min multi-scene scripts
         });
 
         if (res.ok) {
           const json = await res.json() as { output?: Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }>; usage?: unknown };
-          const msg = json.output?.find(output => output.type === 'message');
-          const content = msg?.content?.find(item => item.type === 'output_text')?.text || json.output?.[0]?.content?.[0]?.text;
+          let content = '';
+          const messageOutputs = json.output?.filter(output => output.type === 'message') || [];
+          for (const msg of messageOutputs) {
+            if (Array.isArray(msg.content)) {
+              for (const item of msg.content) {
+                if (item.type === 'output_text' && typeof item.text === 'string') {
+                  content += item.text;
+                } else if (typeof item.text === 'string') {
+                  content += item.text;
+                }
+              }
+            }
+          }
+          if (!content && json.output?.[0]?.content?.[0]?.text) {
+            content = json.output[0].content[0].text;
+          }
           if (content) {
             return { content, usage: json.usage };
           }
         } else {
           const errText = await res.text();
-          console.warn('[AgentRouter] /v1/responses failed, will attempt /v1/chat/completions:', errText.slice(0, 150));
+          let errMsg = errText;
+          try {
+            const parsed = JSON.parse(errText);
+            errMsg = parsed.error?.message || errText;
+          } catch {}
+          if (isSolModel) {
+            throw new Error(`Agent Router Text Generation Error (${res.status}) with model ${model}: ${errMsg}`);
+          }
+          console.warn('[AgentRouter] /v1/responses failed, will attempt /v1/chat/completions:', errMsg.slice(0, 150));
         }
       } catch (err: unknown) {
+        if (isSolModel) {
+          throw new Error(`Agent Router Text Generation Error with model ${model}: ${errorMessage(err)}`);
+        }
         console.warn('[AgentRouter] /v1/responses network exception:', errorMessage(err));
       }
     }
@@ -189,7 +217,7 @@ export class OpenRouterClient {
         method: 'POST',
         headers,
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(120000), // 2 min timeout
+        signal: AbortSignal.timeout(360000), // 6 min timeout
       });
     } catch (err: unknown) {
       throw new Error(`${providerName} network error during text generation: ${errorMessage(err)}`);
@@ -297,9 +325,15 @@ export class OpenRouterClient {
           };
         } else if (item.url) {
           // Download URL
-          const imgRes = await fetch(item.url, { signal: AbortSignal.timeout(30000) });
-          if (!imgRes.ok) throw new Error(`Failed to download generated image from URL: ${item.url}`);
+          const imgRes = await fetchAllowedOutboundUrl(item.url, [
+            'openrouter.ai', 'googleusercontent.com', 'fal.media', 'replicate.delivery',
+            'imagedelivery.net', 'amazonaws.com', 'aliyuncs.com', 'blob.core.windows.net',
+          ], { signal: AbortSignal.timeout(30000) });
+          if (!imgRes.ok) throw new Error('Failed to download generated image.');
+          const declaredBytes = Number(imgRes.headers.get('content-length') || 0);
+          if (declaredBytes > 25 * 1024 * 1024) throw new Error('Generated image is too large.');
           const arrBuf = await imgRes.arrayBuffer();
+          if (arrBuf.byteLength > 25 * 1024 * 1024) throw new Error('Generated image is too large.');
           return {
             buffer: Buffer.from(arrBuf),
             cost: data.usage?.cost,

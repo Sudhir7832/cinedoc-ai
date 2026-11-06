@@ -1,4 +1,31 @@
 import { getConfig } from '../config';
+import { fetchAllowedOutboundUrl } from '../security/outbound-url';
+
+type MiniMaxMusicResponse = {
+  state?: string;
+  result?: { audio?: string };
+  error?: { message?: string } | string;
+};
+
+type MiniMaxVideoResponse = {
+  task?: {
+    id?: string;
+    status?: 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+    content?: { url?: string };
+    error?: { code?: string; message?: string };
+    duration?: number;
+    ratio?: string;
+    resolution?: string;
+  };
+};
+
+export type GeneratedVideo = {
+  buffer: Buffer;
+  taskId: string;
+  duration?: number;
+  ratio?: string;
+  resolution?: string;
+};
 
 export class CloudflareClient {
   public static async testConnection(accountId?: string, apiToken?: string): Promise<{ success: boolean; message: string }> {
@@ -223,5 +250,141 @@ export class CloudflareClient {
 
     const arrayBuffer = await res.arrayBuffer();
     return Buffer.from(arrayBuffer);
+  }
+
+  public static async generateMusic(prompt: string, modelOverride?: string): Promise<Buffer> {
+    const config = await getConfig();
+    if (!config.cloudflareAccountId || !config.cloudflareApiToken) {
+      throw new Error('Cloudflare credentials are not configured for music generation.');
+    }
+    const model = modelOverride || config.cloudflareMusicModel || 'minimax/music-2.6';
+    const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${config.cloudflareAccountId}/ai/run`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${config.cloudflareApiToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        input: {
+          prompt,
+          is_instrumental: true,
+          lyrics_optimizer: false,
+          format: 'mp3',
+          sample_rate: 44100,
+        },
+      }),
+      signal: AbortSignal.timeout(300000),
+    });
+    if (!response.ok) {
+      throw new Error(await this.formatRunError(response, `Cloudflare music generation (${model})`));
+    }
+
+    const data = await response.json() as MiniMaxMusicResponse;
+    if (data.state && data.state.toLowerCase() !== 'completed') {
+      const detail = typeof data.error === 'string' ? data.error : data.error?.message;
+      throw new Error(`Cloudflare music generation ended in state "${data.state}"${detail ? `: ${detail}` : '.'}`);
+    }
+    const audio = data.result?.audio;
+    if (!audio) throw new Error(`Cloudflare music generation returned no audio URL: ${JSON.stringify(data).slice(0, 300)}`);
+    return this.downloadAsset(audio, 'generated music', 120000);
+  }
+
+  public static async generateVideo(
+    prompt: string,
+    options?: {
+      model?: string;
+      duration?: number;
+      ratio?: '16:9' | '9:16';
+      resolution?: '480P' | '768P';
+    }
+  ): Promise<GeneratedVideo> {
+    const config = await getConfig();
+    if (!config.cloudflareAccountId || !config.cloudflareApiToken) {
+      throw new Error('Cloudflare credentials are not configured for video generation.');
+    }
+
+    const model = options?.model || config.cloudflareVideoModel || 'minimax/h3-lite';
+    const duration = Math.max(4, Math.min(15, Math.round(options?.duration || 6)));
+    const ratio = options?.ratio || '16:9';
+    const resolution = options?.resolution || '480P';
+    const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${config.cloudflareAccountId}/ai/run`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${config.cloudflareApiToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        input: {
+          content: [{ type: 'text', text: prompt }],
+          duration,
+          ratio,
+          resolution,
+        },
+      }),
+      signal: AbortSignal.timeout(600000),
+    });
+    if (!response.ok) {
+      throw new Error(await this.formatRunError(response, `Cloudflare video generation (${model})`));
+    }
+
+    const data = await response.json() as MiniMaxVideoResponse;
+    const task = data.task;
+    if (!task) throw new Error(`Cloudflare video generation returned no task: ${JSON.stringify(data).slice(0, 300)}`);
+    if (task.status !== 'succeeded') {
+      const detail = task.error?.message;
+      throw new Error(`Cloudflare video task ${task.id || 'unknown'} ended in state "${task.status || 'unknown'}"${detail ? `: ${detail}` : '.'}`);
+    }
+    const videoUrl = task.content?.url;
+    if (!videoUrl) throw new Error(`Cloudflare video task ${task.id || 'unknown'} returned no video URL.`);
+
+    return {
+      buffer: await this.downloadAsset(videoUrl, 'generated video', 180000),
+      taskId: task.id || '',
+      duration: task.duration,
+      ratio: task.ratio,
+      resolution: task.resolution,
+    };
+  }
+
+  private static async downloadAsset(url: string, label: string, timeoutMs: number): Promise<Buffer> {
+    if (url.startsWith('data:')) {
+      const separator = url.indexOf(',');
+      if (separator < 0 || !url.slice(0, separator).includes(';base64')) {
+        throw new Error(`Cloudflare ${label} data URL is invalid.`);
+      }
+      return Buffer.from(url.slice(separator + 1), 'base64');
+    }
+
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(url);
+    } catch {
+      throw new Error(`Cloudflare ${label} URL is invalid.`);
+    }
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      throw new Error(`Cloudflare ${label} URL uses an unsupported protocol.`);
+    }
+
+    const response = await fetchAllowedOutboundUrl(parsedUrl.toString(), ['cloudflare.com', 'aliyuncs.com', 'minimax.io'], {
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!response.ok) {
+      throw new Error(`Cloudflare ${label} download failed (${response.status}).`);
+    }
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.length === 0) throw new Error(`Cloudflare ${label} download was empty.`);
+    return buffer;
+  }
+
+  private static async formatRunError(response: Response, label: string): Promise<string> {
+    const raw = await response.text();
+    let detail = raw.slice(0, 300);
+    try {
+      const data = JSON.parse(raw) as { errors?: Array<{ message?: string }> };
+      detail = data.errors?.[0]?.message || detail;
+    } catch {}
+    if (response.status === 402) {
+      return `${label} requires Cloudflare AI Gateway credit or BYOK: ${detail}`;
+    }
+    if (response.status === 429) {
+      return `${label} quota is exhausted: ${detail}`;
+    }
+    return `${label} failed (${response.status}): ${detail}`;
   }
 }

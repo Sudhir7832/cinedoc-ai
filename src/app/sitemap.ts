@@ -1,9 +1,9 @@
 import type { MetadataRoute } from 'next';
-
-const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '');
+import { getSiteUrl } from '@/lib/brand';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const lastModified = '2026-10-31';
+  const baseUrl = getSiteUrl();
+  const lastModified = '2026-11-05';
   return [
     { url: `${baseUrl}/`, lastModified, changeFrequency: 'weekly', priority: 1 },
     { url: `${baseUrl}/about`, lastModified, changeFrequency: 'monthly', priority: 0.8 },

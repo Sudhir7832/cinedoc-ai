@@ -1,11 +1,11 @@
-# CineDoc AI — 1080p AI Documentary Creator SaaS MVP
+# KinesisFlow - Documentary and Kids & Family Video Creator
 
-A web application that generates complete, cinematic 1080p documentary videos from any topic prompt using AI and FFmpeg.
+A web application for creating editable documentary-style and Kids & Family videos from a topic or script using AI-assisted media generation and FFmpeg.
 
 ## Features
 
 - **Documentary Script Generator**: Creates structured, scene-by-scene narration, cinematic image prompts, and timing based on documentary duration (1, 3, or 5 minutes).
-- **Audience-Aware Production**: Choose cinematic documentary mode or Kids & Family formats for education, entertainment, safe adventures, and calming bedtime stories, each with tailored narration and visual direction.
+- **Audience-Aware Production**: Choose cinematic documentary mode or Kids & Family formats for education, entertainment, adventures, rhymes, and bedtime stories, each with tailored narration and visual direction.
 - **Exact Image Count Specification**: Generates **exactly 10 AI images per finished video minute** (1 min = 10 images, 3 min = 30 images, 5 min = 50 images).
 - **Landscape and Vertical Output**: One-minute videos can be rendered as 16:9 landscape or 9:16 vertical masters for Shorts, Reels, and TikTok.
 - **Voice Narration (TTS)**: Text-to-speech audio per scene, measured precisely with `ffprobe` for natural cadence and timing.
@@ -14,7 +14,7 @@ A web application that generates complete, cinematic 1080p documentary videos fr
 - **Ambient Soundtrack**: 100% royalty-free ambient cinematic music ducked under the voice narration (-20dB) without audio clipping.
 - **FFmpeg Ken Burns Engine**: Alternating cinematic pan-and-zoom motions and crossfade transitions rendered into 1080p H.264 MP4.
 - **Live Progress & Job Management**: 6-stage pipeline tracker with real image thumbnails, individual scene statuses, and resume/retry capabilities.
-- **Charge on Success**: Credits are reserved while a job runs, deducted only after the final video passes validation, and automatically released when generation fails.
+- **Stage-Based Credits**: Credits are reserved when a job starts, consumed as durable script, image, narration, and video work completes, and only the unused reservation is released after cancellation or failure.
 - **Testing Credit Console**: Administrators can fund test accounts with 1-minute, 5-minute, 15-minute, or custom credit amounts.
 - **Supabase Persistence & Authentication**: Supabase Auth, profiles, job metadata, credit reservations, transactions, platform settings, and testimonial records.
 
@@ -92,7 +92,9 @@ The service role key is server-only and must never use a `NEXT_PUBLIC_` prefix.
 
 ### Private R2 Media
 
-Generated videos and thumbnails use authenticated `/api/media/jobs/...` routes. Keep the R2 bucket private and disable its public `r2.dev` development URL or public custom domain. Showcase media uses the `showcase/` prefix and is intentionally available through the public media proxy.
+Generated local media is stored under `data/generated` and served through authenticated `/api/jobs/:id/media/...` routes. R2 videos and thumbnails use authenticated `/api/media/jobs/...` routes. Keep the R2 bucket private and disable its public `r2.dev` development URL or public custom domain. Showcase media uses the `showcase/` prefix and is intentionally available through the public media proxy.
+
+For existing databases, apply `data/supabase-billing-v1-migration.sql`, `data/supabase-security-migration.sql`, `data/supabase-payment-integrity-migration.sql`, `data/supabase-job-lease-migration.sql`, and `data/supabase-showcase-category-migration.sql` before deploying the matching application version. Run `npm run migrate:private-media` once to move legacy files out of `public/generated`.
 
 ### Dodo Payments
 

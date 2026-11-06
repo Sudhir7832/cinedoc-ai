@@ -7,6 +7,7 @@ const KIDS_VISUAL_STYLES: Record<KidsFormat, string> = {
   entertainment: 'high-energy children\'s animated story illustration, funny expressive characters, playful action, bold candy colors, whimsical props, joyful cinematic composition',
   adventure: 'vibrant children\'s fantasy adventure illustration, brave friendly heroes, imaginative landscapes, exciting but safe action, dynamic lighting, colorful cinematic composition',
   bedtime: 'gentle children\'s bedtime storybook illustration, cozy friendly characters, soft pastel colors, warm moonlight, dreamy clouds and stars, calm comforting composition',
+  rhyme: 'bright nursery rhyme animation, dancing friendly characters, musical shapes, rhythmic movement, bold cheerful colors, playful stage lighting',
 };
 
 function getVisualStyle(contentStyle: ContentStyle, kidsFormat: KidsFormat = 'entertainment', aspectRatio: VideoAspectRatio = '16:9'): string {
@@ -21,6 +22,7 @@ function getKidsDirection(format: KidsFormat): string {
     entertainment: 'Prioritize comedy, imagination, playful surprises, lovable characters, and a satisfying fun story. A lesson is optional and must never feel forced.',
     adventure: 'Create a safe, exciting quest with teamwork, discovery, imaginative obstacles, and a cheerful resolution. Avoid realistic peril or violence.',
     bedtime: 'Create a slow, cozy, reassuring story with gentle repetition, soft wonder, emotional safety, and a peaceful ending suitable before sleep.',
+    rhyme: 'Write catchy rhyming lyrics with a repeated chorus, simple rhythm, playful repetition, and singable lines. Use Hindi rhyme when language is Hindi and English rhyme when language is English.',
   };
   return directions[format];
 }
@@ -465,6 +467,30 @@ DO NOT wrap with markdown code fences if possible, or use standard \`\`\`json. E
       { title: 'Sweet Dreams', narration: `The ${topic} story gently ends beneath the stars with sweet and happy dreams.` },
     ];
 
+    const rhymeKidsTemplates = isHindi ? [
+      { title: 'संगीत की शुरुआत', narration: `${topic} की धुन बजाओ, ताली देकर साथ में गाओ।` },
+      { title: 'पहली तुक', narration: `नन्हे कदम आगे बढ़ते, हँसते-गाते सपने सजते।` },
+      { title: 'रंगों का गीत', narration: `लाल और पीला, नीला महान, रंगों के संग नाचे जहान।` },
+      { title: 'दोहराओ', narration: `गाओ फिर से प्यारी बात, मिलकर झूमें दिन और रात।` },
+      { title: 'जानवरों की टोली', narration: `भालू बजाए ढोल सुहाना, बिल्ली गाए मीठा गाना।` },
+      { title: 'गिनती की ताल', narration: `एक दो तीन, ताल रंगीन, चार पाँच छह, नाचें हम यहीं।` },
+      { title: 'मज़ेदार पुल', narration: `छोटी सी तुक, प्यारी सी धुन, साथ में गाएँ हम सब सुन।` },
+      { title: 'फिर से कोरस', narration: `${topic} की धुन बजाओ, ताली देकर साथ में गाओ।` },
+      { title: 'अंतिम नाच', narration: `घूमो झूमो हँसो मुस्काओ, अपनी प्यारी तुक बनाओ।` },
+      { title: 'विदाई गीत', narration: `गीत हुआ पूरा आज, फिर मिलेंगे नई धुन के साथ।` },
+    ] : [
+      { title: 'Music Begins', narration: `Play the tune for ${topic}, clap your hands and sing along.` },
+      { title: 'First Rhyme', narration: `Tiny feet go tap tap tap, happy hands go clap clap clap.` },
+      { title: 'Color Song', narration: `Red and yellow, blue so bright, dancing colors feel just right.` },
+      { title: 'Sing Again', narration: `Sing it softly, sing it loud, share the rhythm with the crowd.` },
+      { title: 'Animal Band', narration: `Bear plays drums with boom boom boom, kitty sings across the room.` },
+      { title: 'Counting Beat', narration: `One two three, dance with me, four five six, musical tricks.` },
+      { title: 'Rhyme Bridge', narration: `Little rhyme and little tune, bouncing underneath the moon.` },
+      { title: 'Chorus Again', narration: `Play the tune for ${topic}, clap your hands and sing along.` },
+      { title: 'Final Dance', narration: `Spin around and touch the ground, make your own fantastic sound.` },
+      { title: 'Goodbye Song', narration: `Our rhyme is done but not for long, we will meet in another song.` },
+    ];
+
     const templates = contentStyle === 'kids'
       ? (kidsFormat === 'educational'
           ? (isHindi ? kidsHindiTemplates : kidsEnglishTemplates)
@@ -472,7 +498,9 @@ DO NOT wrap with markdown code fences if possible, or use standard \`\`\`json. E
             ? adventureKidsTemplates
             : kidsFormat === 'bedtime'
               ? bedtimeKidsTemplates
-              : entertainmentKidsTemplates)
+              : kidsFormat === 'rhyme'
+                ? rhymeKidsTemplates
+                : entertainmentKidsTemplates)
       : (isHindi ? hindiTemplates : englishTemplates);
 
     const scenes: SceneItem[] = [];

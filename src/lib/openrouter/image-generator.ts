@@ -4,12 +4,15 @@ import { DocumentaryJob, SceneItem } from '../types';
 import { StorageManager } from '../storage';
 import { OpenRouterClient } from './client';
 import { R2Storage } from '../storage/r2';
+import { fetchAllowedOutboundUrl } from '../security/outbound-url';
+import { runFfmpeg } from '../security/process';
 
 const KIDS_IMAGE_DIRECTION = {
   educational: 'colorful children\'s educational storybook illustration, clear visual concepts, friendly guides, rounded shapes, bright balanced colors',
   entertainment: 'high-energy children\'s animated story illustration, funny expressive characters, playful action, bold candy colors, whimsical joyful composition',
   adventure: 'vibrant children\'s fantasy adventure illustration, brave friendly heroes, imaginative landscapes, exciting but safe action, colorful cinematic lighting',
   bedtime: 'gentle children\'s bedtime storybook illustration, cozy characters, soft pastel colors, warm moonlight, dreamy calm composition',
+  rhyme: 'bright nursery rhyme animation, dancing friendly characters, musical shapes, rhythmic movement, bold cheerful colors, playful stage lighting',
 } as const;
 
 function errorMessage(error: unknown): string {
@@ -18,8 +21,9 @@ function errorMessage(error: unknown): string {
 
 async function puterImageToBuffer(raw: unknown): Promise<Buffer | null> {
   if (typeof raw === 'string' && raw.startsWith('http')) {
-    const response = await fetch(raw);
-    return Buffer.from(await response.arrayBuffer());
+    const response = await fetchAllowedOutboundUrl(raw, ['puter.com', 'puter.site']);
+    if (!response.ok) throw new Error('Puter image download failed.');
+    return boundedImageBuffer(response);
   }
   if (!raw || typeof raw !== 'object') return null;
 
@@ -31,16 +35,27 @@ async function puterImageToBuffer(raw: unknown): Promise<Buffer | null> {
     return Buffer.from(result.src.replace(/^data:image\/\w+;base64,/, ''), 'base64');
   }
   if (typeof result.src === 'string' && result.src.startsWith('http')) {
-    const response = await fetch(result.src);
-    return Buffer.from(await response.arrayBuffer());
+    const response = await fetchAllowedOutboundUrl(result.src, ['puter.com', 'puter.site']);
+    if (!response.ok) throw new Error('Puter image download failed.');
+    return boundedImageBuffer(response);
   }
   return null;
+}
+
+async function boundedImageBuffer(response: Response): Promise<Buffer> {
+  const maxBytes = 25 * 1024 * 1024;
+  const declaredSize = Number(response.headers.get('content-length') || 0);
+  if (declaredSize > maxBytes) throw new Error('Puter image is too large.');
+  const buffer = Buffer.from(await response.arrayBuffer());
+  if (buffer.length > maxBytes) throw new Error('Puter image is too large.');
+  return buffer;
 }
 
 export class ImageGenerator {
   public static async generateImagesForJob(
     job: DocumentaryJob,
-    onProgressUpdate?: (job: DocumentaryJob) => void | Promise<void>
+    onProgressUpdate?: (job: DocumentaryJob) => void | Promise<void>,
+    shouldCancel?: () => boolean
   ): Promise<DocumentaryJob> {
     const totalScenes = job.scenes.length;
     const imagesDir = StorageManager.getJobImagesDir(job.id);
@@ -48,6 +63,7 @@ export class ImageGenerator {
     const cfg = await getConfig();
 
     for (let i = 0; i < totalScenes; i++) {
+      if (shouldCancel?.()) throw new Error('PIPELINE_CANCELLED');
       const scene = job.scenes[i];
       const composition = job.aspectRatio === '9:16' ? 'vertical 9:16 portrait composition, mobile-first framing' : 'widescreen 16:9 composition';
       const styledPrompt = job.contentStyle === 'kids'
@@ -65,7 +81,7 @@ export class ImageGenerator {
       // Check if image already exists from a previous or partial run
       if (existingFilename) {
         const existingFilePath = path.join(imagesDir, existingFilename);
-        scene.imagePath = `/generated/${job.id}/images/${existingFilename}`;
+        scene.imagePath = StorageManager.getLocalMediaUrl(job.id, `images/${existingFilename}`);
         scene.imageUpdatedAt = fs.statSync(existingFilePath).mtime.toISOString();
         await this.publishGeneratingThumbnail(job, scene, existingFilePath);
         scene.imageStatus = 'completed';
@@ -133,6 +149,7 @@ export class ImageGenerator {
       }
 
       for (let attempt = 1; attempt <= 3; attempt++) {
+        if (shouldCancel?.()) throw new Error('PIPELINE_CANCELLED');
         try {
           const { buffer, cost } = await OpenRouterClient.generateImage(styledPrompt, undefined, job.aspectRatio || '16:9');
           scene.imagePath = StorageManager.saveImageFile(job.id, scene.sceneNumber, buffer);
@@ -184,7 +201,7 @@ export class ImageGenerator {
 
             console.log(`[ImageGenerator] Generating high-res cinematic documentary visual for scene ${scene.sceneNumber}...`);
             await this.generateCinematicSceneImage(job.id, scene, job.topic, job.contentStyle || 'documentary', job.kidsFormat || 'entertainment', job.aspectRatio || '16:9');
-            scene.imagePath = `/generated/${job.id}/images/${filename}`;
+            scene.imagePath = StorageManager.getLocalMediaUrl(job.id, `images/${filename}`);
             scene.imageUpdatedAt = new Date().toISOString();
             await this.publishGeneratingThumbnail(job, scene, path.join(imagesDir, filename));
             scene.imageStatus = 'completed';
@@ -243,16 +260,12 @@ export class ImageGenerator {
     scene: SceneItem,
     topic: string,
     contentStyle: 'documentary' | 'kids' = 'documentary',
-    kidsFormat: 'educational' | 'entertainment' | 'adventure' | 'bedtime' = 'entertainment',
+    kidsFormat: 'educational' | 'entertainment' | 'adventure' | 'bedtime' | 'rhyme' = 'entertainment',
     aspectRatio: '16:9' | '9:16' = '16:9'
   ): Promise<string> {
     const imagesDir = StorageManager.getJobImagesDir(jobId);
     const filename = `scene_${scene.sceneNumber.toString().padStart(2, '0')}.png`;
     const fullPath = path.join(imagesDir, filename);
-
-    const { exec } = await import('child_process');
-    const { promisify } = await import('util');
-    const execAsync = promisify(exec);
 
     // Deep rich cinematic color palettes alternating per scene
     const documentaryPalettes = [
@@ -269,32 +282,45 @@ export class ImageGenerator {
       : documentaryPalettes;
     const color = palettes[(scene.sceneNumber - 1) % palettes.length];
 
-    const safeTitle = (scene.title || `Scene ${scene.sceneNumber}`).replace(/['":\\]/g, ' ').slice(0, 35);
-    const safeTopic = (topic || 'Documentary').replace(/['":\\]/g, ' ').slice(0, 40).toUpperCase();
+    const safeTitle = (scene.title || `Scene ${scene.sceneNumber}`).replace(/[\r\n\0]/g, ' ').slice(0, 35);
+    const safeTopic = (topic || 'Documentary').replace(/[\r\n\0]/g, ' ').slice(0, 40).toUpperCase();
 
     const isHindi = /[\u0900-\u097F]/.test(safeTitle + safeTopic);
-    let fontClause = '';
+    let fontFile: string | undefined;
     if (process.platform === 'win32') {
-      const fontfile = isHindi ? 'C\\:/Windows/Fonts/Nirmala.ttc' : 'C\\:/Windows/Fonts/arial.ttf';
-      fontClause = `:fontfile='${fontfile}'`;
+      fontFile = isHindi ? 'C:/Windows/Fonts/Nirmala.ttc' : 'C:/Windows/Fonts/arial.ttf';
     } else {
       const linuxFonts = [
         '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
         '/usr/share/fonts/truetype/freefont/FreeSans.ttf',
         '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'
       ];
-      const found = linuxFonts.find(f => fs.existsSync(f));
-      if (found) fontClause = `:fontfile='${found}'`;
+      fontFile = linuxFonts.find(f => fs.existsSync(f));
     }
 
-    const sceneLabel = contentStyle === 'kids' ? `STORY ${scene.sceneNumber}` : `SCENE ${scene.sceneNumber}`;
+    const sceneNumber = Number.isSafeInteger(scene.sceneNumber) && scene.sceneNumber > 0 ? scene.sceneNumber : 1;
+    const sceneLabel = contentStyle === 'kids' ? `STORY ${sceneNumber}` : `SCENE ${sceneNumber}`;
     const width = aspectRatio === '9:16' ? 1080 : 1920;
     const height = aspectRatio === '9:16' ? 1920 : 1080;
     const topY = aspectRatio === '9:16' ? 180 : 80;
     const barHeight = aspectRatio === '9:16' ? 90 : 60;
-    const cmd = `ffmpeg -y -f lavfi -i "color=c=${color}:s=${width}x${height}" -vf "drawtext=text='${safeTopic}'${fontClause}:fontsize=28:fontcolor=white@0.8:x=(w-text_w)/2:y=${topY},drawtext=text='${sceneLabel}\\: ${safeTitle.toUpperCase()}'${fontClause}:fontsize=42:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2,drawbox=x=0:y=0:w=${width}:h=${barHeight}:color=black@0.45:t=fill,drawbox=x=0:y=${height - barHeight}:w=${width}:h=${barHeight}:color=black@0.45:t=fill" -frames:v 1 "${fullPath}"`;
+    const topicFile = path.join(imagesDir, `.fallback-topic-${sceneNumber}.txt`);
+    const titleFile = path.join(imagesDir, `.fallback-title-${sceneNumber}.txt`);
+    const filterPath = (value: string) => value.replace(/\\/g, '/').replace(/:/g, '\\:').replace(/'/g, "\\'");
+    const fontClause = fontFile ? `:fontfile='${filterPath(fontFile)}'` : '';
+    fs.writeFileSync(topicFile, safeTopic, { encoding: 'utf8', flag: 'w' });
+    fs.writeFileSync(titleFile, `${sceneLabel}: ${safeTitle.toUpperCase()}`, { encoding: 'utf8', flag: 'w' });
+    const videoFilter = `drawtext=textfile='${filterPath(topicFile)}':expansion=none${fontClause}:fontsize=28:fontcolor=white@0.8:x=(w-text_w)/2:y=${topY},drawtext=textfile='${filterPath(titleFile)}':expansion=none${fontClause}:fontsize=42:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2,drawbox=x=0:y=0:w=${width}:h=${barHeight}:color=black@0.45:t=fill,drawbox=x=0:y=${height - barHeight}:w=${width}:h=${barHeight}:color=black@0.45:t=fill`;
 
-    await execAsync(cmd);
-    return `/generated/${jobId}/images/${filename}`;
+    try {
+      await runFfmpeg([
+        '-y', '-f', 'lavfi', '-i', `color=c=${color}:s=${width}x${height}`,
+        '-vf', videoFilter, '-frames:v', '1', fullPath,
+      ]);
+    } finally {
+      fs.rmSync(topicFile, { force: true });
+      fs.rmSync(titleFile, { force: true });
+    }
+    return StorageManager.getLocalMediaUrl(jobId, `images/${filename}`);
   }
 }

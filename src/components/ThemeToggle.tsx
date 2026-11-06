@@ -7,7 +7,8 @@ export function ThemeToggle() {
     const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
     document.documentElement.classList.toggle('dark', next === 'dark');
     document.documentElement.dataset.theme = next;
-    localStorage.setItem('cinedoc-theme', next);
+    localStorage.setItem('kinesisflow-theme', next);
+    localStorage.removeItem('cinedoc-theme');
   };
 
   return (

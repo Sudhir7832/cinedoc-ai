@@ -23,7 +23,8 @@ export class AudioGenerator {
 
   public static async generateNarrationForJob(
     job: DocumentaryJob,
-    onProgressUpdate?: (job: DocumentaryJob) => void | Promise<void>
+    onProgressUpdate?: (job: DocumentaryJob) => void | Promise<void>,
+    shouldCancel?: () => boolean
   ): Promise<DocumentaryJob> {
     const totalScenes = job.scenes.length;
     const audioDir = StorageManager.getJobAudioDir(job.id);
@@ -32,13 +33,14 @@ export class AudioGenerator {
     job.voice = profile.voice;
 
     for (let i = 0; i < totalScenes; i++) {
+      if (shouldCancel?.()) throw new Error('PIPELINE_CANCELLED');
       const scene = job.scenes[i];
       const filename = `scene_${scene.sceneNumber.toString().padStart(2, '0')}.mp3`;
       const fullAudioPath = path.join(audioDir, filename);
 
       // Check if already generated
       if (fs.existsSync(fullAudioPath) && fs.statSync(fullAudioPath).size > 1000) {
-        scene.audioPath = `/generated/${job.id}/audio/${filename}`;
+        scene.audioPath = StorageManager.getLocalMediaUrl(job.id, `audio/${filename}`);
         scene.audioDurationSeconds = await this.getAudioDurationSeconds(fullAudioPath);
         scene.audioStatus = 'completed';
         scene.error = undefined;
@@ -55,6 +57,7 @@ export class AudioGenerator {
       let lastErrMessage = '';
 
       for (let attempt = 1; attempt <= 3; attempt++) {
+        if (shouldCancel?.()) throw new Error('PIPELINE_CANCELLED');
         try {
 
           let buffer: Buffer;
@@ -131,7 +134,46 @@ export class AudioGenerator {
     // Now concatenate all scene audio files into a unified master narration track
     await this.concatenateSceneAudios(job);
 
+    if (job.contentStyle === 'kids' && job.kidsFormat === 'rhyme' && !shouldCancel?.()) {
+      try {
+        await this.generateRhymeMusic(job, cfg.cloudflareMusicModel);
+      } catch (error) {
+        console.warn(`[AudioGenerator] Rhyme music generation skipped:`, error instanceof Error ? error.message : error);
+        await this.generateFallbackRhymeMusic(job);
+      }
+    }
+
     return job;
+  }
+
+  private static async generateRhymeMusic(job: DocumentaryJob, model?: string): Promise<void> {
+    const { CloudflareClient } = await import('../cloudflare/client');
+    const language = job.language === 'Hindi' ? 'Hindi nursery rhyme' : 'English nursery rhyme';
+    const prompt = `${language} instrumental backing track for children about ${job.topic}, cheerful melody, simple rhythm, playful percussion, warm xylophone and bells, no vocals, family friendly, approximately ${job.durationMinutes * 60} seconds`;
+    const buffer = await CloudflareClient.generateMusic(prompt, model);
+    const audioDir = StorageManager.getJobAudioDir(job.id);
+    const sourcePath = path.join(audioDir, 'rhyme_music_source.audio');
+    const outputPath = path.join(audioDir, 'rhyme_music.mp3');
+    fs.writeFileSync(sourcePath, buffer);
+    try {
+      await execAsync(`ffmpeg -y -i "${sourcePath}" -c:a libmp3lame -ar 44100 -ac 2 -q:a 2 "${outputPath}"`);
+    } finally {
+      if (fs.existsSync(sourcePath)) fs.unlinkSync(sourcePath);
+    }
+    job.musicPath = outputPath;
+    job.musicUrl = StorageManager.getLocalMediaUrl(job.id, 'audio/rhyme_music.mp3');
+    await StorageManager.saveJob(job);
+  }
+
+  private static async generateFallbackRhymeMusic(job: DocumentaryJob): Promise<void> {
+    const audioDir = StorageManager.getJobAudioDir(job.id);
+    const outputPath = path.join(audioDir, 'rhyme_music.mp3');
+    const duration = job.durationMinutes * 60;
+    const command = `ffmpeg -y -f lavfi -i "sine=frequency=523:duration=${duration}" -f lavfi -i "sine=frequency=659:duration=${duration}" -f lavfi -i "sine=frequency=131:duration=${duration}" -filter_complex "[0:a]tremolo=f=2:d=0.75,volume=0.10[a0];[1:a]tremolo=f=1:d=0.65,volume=0.07[a1];[2:a]tremolo=f=4:d=0.90,volume=0.08[a2];[a0][a1][a2]amix=inputs=3:duration=longest,afade=t=in:st=0:d=1,afade=t=out:st=${Math.max(1, duration - 2)}:d=2[a]" -map "[a]" -c:a libmp3lame -ar 44100 -ac 2 -q:a 4 "${outputPath}"`;
+    await execAsync(command);
+    job.musicPath = outputPath;
+    job.musicUrl = StorageManager.getLocalMediaUrl(job.id, 'audio/rhyme_music.mp3');
+    await StorageManager.saveJob(job);
   }
 
   public static async concatenateSceneAudios(job: DocumentaryJob): Promise<string> {

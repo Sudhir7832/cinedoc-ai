@@ -71,11 +71,7 @@ export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpe
         setSelectedPackId(current => nextPacks.some((pack: PricingPack) => pack.id === current)
           ? current
           : nextPacks[0]?.id || current);
-
-        // Auto-select currency if only Razorpay is available
-        const defaultCurrency = (!hasStripe && !hasDodo && hasRazorpay) ? 'INR' : 'USD';
-        setCurrency(defaultCurrency);
-        setGateway(canUseSandbox ? 'test' : (!hasStripe && !hasDodo && hasRazorpay) ? 'razorpay' : hasDodo ? 'dodo' : hasStripe ? 'stripe' : hasRazorpay ? 'razorpay' : 'stripe');
+        setGateway(canUseSandbox ? 'test' : hasDodo ? 'dodo' : hasStripe ? 'stripe' : hasRazorpay ? 'razorpay' : 'stripe');
       })
       .catch(() => setError('Pricing could not be loaded. Please try again.'));
   }, [isOpen, user?.role]);
@@ -85,8 +81,7 @@ export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpe
   const selectedPack = packs.find(pack => pack.id === selectedPackId) || packs[0];
   const availableCredits = user?.availableCredits ?? user?.credits ?? 0;
   const sandboxAvailable = testModeEnabled && user?.role === 'admin';
-  const hasAnyGateway = sandboxAvailable || stripeAvailable || dodoAvailable || razorpayAvailable;
-  const hasPaymentMethod = sandboxAvailable || (currency === 'USD' ? (stripeAvailable || dodoAvailable) : razorpayAvailable) || (gateway === 'razorpay' && razorpayAvailable);
+  const hasPaymentMethod = sandboxAvailable || dodoAvailable || (currency === 'USD' ? stripeAvailable : razorpayAvailable);
 
   const handleCheckout = async () => {
     if (!user) {
@@ -101,11 +96,10 @@ export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpe
     setLoading(true);
 
     try {
-      const checkoutCurrency = gateway === 'razorpay' ? 'INR' : currency;
       const response = await fetch('/api/payments/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ packId: selectedPack.id, gateway, currency: checkoutCurrency }),
+        body: JSON.stringify({ packId: selectedPack.id, gateway, currency: gateway === 'dodo' ? 'USD' : currency }),
       });
       const data = await response.json();
       if (!response.ok || !data.success) throw new Error(data.error || 'Unable to start checkout.');
@@ -127,46 +121,77 @@ export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpe
       }
 
       if (data.mode === 'razorpay') {
-        const script = document.createElement('script');
-        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-        script.onload = () => {
+        const startRazorpayCheckout = () => {
           const Razorpay = (window as typeof window & { Razorpay: RazorpayConstructor }).Razorpay;
+          if (!Razorpay) {
+            setLoading(false);
+            setError('Razorpay SDK could not be initialized. Please try again.');
+            return;
+          }
           const checkout = new Razorpay({
             key: data.keyId,
             amount: data.amount,
             currency: data.currency,
-            name: 'CineDoc AI',
+            name: 'KinesisFlow',
             description: `${selectedPack.name} · ${selectedPack.credits} production credits`,
             order_id: data.orderId,
+            modal: {
+              ondismiss: () => {
+                setLoading(false);
+              },
+            },
             handler: async (payment: RazorpayResponse) => {
-              const verifyResponse = await fetch('/api/payments/verify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  gateway: 'razorpay',
-                  razorpay_order_id: payment.razorpay_order_id,
-                  razorpay_payment_id: payment.razorpay_payment_id,
-                  razorpay_signature: payment.razorpay_signature,
-                }),
-              });
-              const result = await verifyResponse.json();
-              if (!verifyResponse.ok || !result.success) {
-                setError(result.error || 'Payment verification failed.');
-                return;
+              try {
+                const verifyResponse = await fetch('/api/payments/verify', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    gateway: 'razorpay',
+                    razorpay_order_id: payment.razorpay_order_id,
+                    razorpay_payment_id: payment.razorpay_payment_id,
+                    razorpay_signature: payment.razorpay_signature,
+                  }),
+                });
+                const result = await verifyResponse.json();
+                if (!verifyResponse.ok || !result.success) {
+                  setError(result.error || 'Payment verification failed.');
+                  setLoading(false);
+                  return;
+                }
+                setSuccessMessage(`Payment confirmed. ${selectedPack.credits} credits added.`);
+                const meResponse = await fetch('/api/auth/me');
+                const me = await meResponse.json();
+                if (me.user) onCreditsUpdated(me.user);
+                window.setTimeout(onClose, 1200);
+              } catch (verifyError: unknown) {
+                setError(verifyError instanceof Error ? verifyError.message : 'Payment verification failed.');
+                setLoading(false);
               }
-              setSuccessMessage(`Payment confirmed. ${selectedPack.credits} credits added.`);
-              const meResponse = await fetch('/api/auth/me');
-              const me = await meResponse.json();
-              if (me.user) onCreditsUpdated(me.user);
-              window.setTimeout(onClose, 1200);
             },
             prefill: { email: user.email, name: user.name },
-            theme: { color: '#ed5b32' },
+            theme: { color: '#b84b2c' },
           });
           checkout.open();
         };
-        script.onerror = () => setError('Razorpay could not be loaded. Please try again.');
-        document.body.appendChild(script);
+
+        if (typeof (window as unknown as { Razorpay?: unknown }).Razorpay !== 'undefined') {
+          startRazorpayCheckout();
+        } else {
+          const existingScript = document.querySelector('script[src*="checkout.razorpay.com"]');
+          if (existingScript) {
+            existingScript.addEventListener('load', startRazorpayCheckout, { once: true });
+          } else {
+            const script = document.createElement('script');
+            script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+            script.async = true;
+            script.onload = startRazorpayCheckout;
+            script.onerror = () => {
+              setLoading(false);
+              setError('Razorpay could not be loaded. Please check your connection and try again.');
+            };
+            document.body.appendChild(script);
+          }
+        }
       }
     } catch (checkoutError: unknown) {
       setError(checkoutError instanceof Error ? checkoutError.message : 'Payment failed.');
@@ -210,8 +235,12 @@ export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpe
                   key={option}
                   onClick={() => {
                     setCurrency(option);
-                    if (option === 'INR') setGateway(razorpayAvailable ? 'razorpay' : 'test');
-                    if (option === 'USD' && gateway === 'razorpay') setGateway(dodoAvailable ? 'dodo' : 'stripe');
+                    if (option === 'INR') {
+                      if (gateway !== 'dodo') setGateway(razorpayAvailable ? 'razorpay' : dodoAvailable ? 'dodo' : 'test');
+                    }
+                    if (option === 'USD' && gateway === 'razorpay') {
+                      setGateway(dodoAvailable ? 'dodo' : stripeAvailable ? 'stripe' : 'test');
+                    }
                   }}
                   className={`min-h-9 rounded-lg px-3 text-xs font-bold transition-colors ${currency === option ? 'bg-[var(--app-text)] text-[var(--app-surface)]' : 'text-secondary hover:text-[var(--app-text)]'}`}
                   aria-pressed={currency === option}
@@ -272,50 +301,22 @@ export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpe
                     <Sparkles className="h-4 w-4 text-[var(--app-accent)]" aria-hidden="true" /> Admin sandbox
                   </button>
                 )}
-                {stripeAvailable && (
-                  <button 
-                    type="button" 
-                    onClick={() => {
-                      if (currency !== 'USD') setCurrency('USD');
-                      setGateway('stripe');
-                    }} 
-                    className={`btn-secondary !text-xs ${gateway === 'stripe' ? '!border-[var(--app-accent)] !bg-[var(--app-surface-soft)]' : ''}`} 
-                    aria-pressed={gateway === 'stripe'}
-                  >
-                    <CreditCard className="h-4 w-4 text-[var(--app-accent)]" aria-hidden="true" /> Stripe {currency === 'INR' ? '(USD $)' : ''}
+                {stripeAvailable && currency === 'USD' && (
+                  <button type="button" onClick={() => setGateway('stripe')} className={`btn-secondary !text-xs ${gateway === 'stripe' ? '!border-[var(--app-accent)] !bg-[var(--app-surface-soft)]' : ''}`} aria-pressed={gateway === 'stripe'}>
+                    <CreditCard className="h-4 w-4 text-[var(--app-accent)]" aria-hidden="true" /> Stripe
                   </button>
                 )}
                 {dodoAvailable && (
-                  <button 
-                    type="button" 
-                    onClick={() => {
-                      if (currency !== 'USD') setCurrency('USD');
-                      setGateway('dodo');
-                    }} 
-                    className={`btn-secondary !text-xs ${gateway === 'dodo' ? '!border-[var(--app-brand)] !bg-[var(--app-brand-soft)]' : ''}`} 
-                    aria-pressed={gateway === 'dodo'}
-                  >
-                    <ShieldCheck className="h-4 w-4 brand-text" aria-hidden="true" /> Dodo Payments {currency === 'INR' ? '(USD $)' : ''}
+                  <button type="button" onClick={() => setGateway('dodo')} className={`btn-secondary !text-xs ${gateway === 'dodo' ? '!border-[var(--app-brand)] !bg-[var(--app-brand-soft)]' : ''}`} aria-pressed={gateway === 'dodo'}>
+                    <ShieldCheck className="h-4 w-4 brand-text" aria-hidden="true" /> Dodo Payments {currency === 'INR' ? '(Global / UPI)' : ''}
                   </button>
                 )}
-                {razorpayAvailable && (
-                  <button 
-                    type="button" 
-                    onClick={() => {
-                      if (currency !== 'INR') setCurrency('INR');
-                      setGateway('razorpay');
-                    }} 
-                    className={`btn-secondary !text-xs ${gateway === 'razorpay' ? '!border-[var(--app-accent)] !bg-[var(--app-surface-soft)]' : ''}`} 
-                    aria-pressed={gateway === 'razorpay'}
-                  >
-                    <ShieldCheck className="h-4 w-4 text-[var(--app-accent)]" aria-hidden="true" /> Razorpay {currency === 'USD' ? '(INR ₹)' : ''}
+                {razorpayAvailable && currency === 'INR' && (
+                  <button type="button" onClick={() => setGateway('razorpay')} className={`btn-secondary !text-xs ${gateway === 'razorpay' ? '!border-[var(--app-accent)] !bg-[var(--app-surface-soft)]' : ''}`} aria-pressed={gateway === 'razorpay'}>
+                    <ShieldCheck className="h-4 w-4 text-[var(--app-accent)]" aria-hidden="true" /> Razorpay · INR
                   </button>
                 )}
-                {!hasAnyGateway && (
-                  <p className="text-xs leading-5 text-secondary">
-                    Payment gateways are not configured yet. An administrator can connect Stripe, Razorpay, or Dodo in settings.
-                  </p>
-                )}
+                {!hasPaymentMethod && <p className="text-xs leading-5 text-secondary">Payment gateways are not configured yet. An administrator can connect Stripe or Razorpay in settings.</p>}
               </div>
             </div>
 

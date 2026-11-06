@@ -4,13 +4,19 @@ import { AudioGenerator } from '@/lib/openrouter/audio-generator';
 import { OpenRouterClient } from '@/lib/openrouter/client';
 import { CloudflareClient } from '@/lib/cloudflare/client';
 import { SessionManager } from '@/lib/auth/session';
-
-const MAX_PREVIEW_CHARS = 5000;
+import { requireSameOrigin } from '@/lib/security/origin';
+import { rateLimit } from '@/lib/security/rate-limit';
+import { parseJsonBody } from '@/lib/security/request';
+import { ttsPreviewSchema } from '@/lib/security/schemas';
+import { secureErrorResponse } from '@/lib/security/errors';
 
 export async function POST(req: NextRequest) {
   try {
-    await SessionManager.requireAdmin(req);
-    const body = await req.json();
+    requireSameOrigin(req);
+    const admin = await SessionManager.requireAdmin(req);
+    const limited = await rateLimit(req, { bucket: 'admin-tts-preview', limit: 10, windowSeconds: 600, failClosed: true, discriminator: admin.id });
+    if (limited) return limited;
+    const body = await parseJsonBody(req, ttsPreviewSchema, 8 * 1024);
     const {
       text = 'In the depths of space, ancient stars whisper the forgotten secrets of the cosmos.',
       provider = 'cloudflare',
@@ -20,16 +26,6 @@ export async function POST(req: NextRequest) {
       language = 'English',
       contentStyle = 'documentary',
     } = body;
-
-    if (!text || typeof text !== 'string' || !text.trim()) {
-      return NextResponse.json({ success: false, error: 'Text prompt is required.' }, { status: 400 });
-    }
-    if (text.length > MAX_PREVIEW_CHARS) {
-      return NextResponse.json(
-        { success: false, error: `Text must be ${MAX_PREVIEW_CHARS} characters or fewer.` },
-        { status: 400 }
-      );
-    }
 
     const cfg = await getConfig();
     const profile = getNarrationProfile(cfg, contentStyle === 'kids' ? 'kids' : 'documentary');
@@ -83,11 +79,6 @@ export async function POST(req: NextRequest) {
       model: actualModel,
     });
   } catch (err: unknown) {
-    console.error('[TTS Preview API Error]:', err);
-    const message = err instanceof Error ? err.message : 'TTS generation failed';
-    return NextResponse.json(
-      { success: false, error: message },
-      { status: message.includes('Authentication required') ? 401 : message.includes('Forbidden') ? 403 : 500 }
-    );
+    return secureErrorResponse(err, 'TTS generation failed.');
   }
 }

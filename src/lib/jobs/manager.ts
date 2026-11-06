@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { DocumentaryJob, CreateJobInput } from '../types';
+import { DocumentaryJob, CreateJobInput, JobBillingSnapshot } from '../types';
 import { StorageManager } from '../storage';
 import { ScriptGenerator } from '../openrouter/script-generator';
 import { ImageGenerator } from '../openrouter/image-generator';
@@ -15,6 +15,62 @@ function errorMessage(error: unknown, fallback: string): string {
 
 export class JobManager {
   private static activeRuns = new Set<string>();
+  private static cancelRequests = new Set<string>();
+
+  private static applyBilling(job: DocumentaryJob, billing: JobBillingSnapshot): void {
+    job.billing = billing;
+    job.creditCost = billing.totalCredits;
+    job.creditsConsumed = billing.consumedCredits;
+    job.creditsReserved = billing.reservedCredits;
+    job.creditStatus = billing.totalCredits === 0
+      ? 'not_required'
+      : billing.status === 'settled'
+        ? 'charged'
+        : billing.status === 'released'
+          ? 'released'
+          : billing.consumedCredits > 0
+            ? 'partially_charged'
+            : 'reserved';
+    job.creditsChargedAt = billing.settledAt;
+    job.creditsReleasedAt = billing.releasedAt;
+  }
+
+  private static async throwIfCancelled(id: string): Promise<void> {
+    if (this.cancelRequests.has(id) || await StorageManager.isCancellationRequested(id)) {
+      this.cancelRequests.add(id);
+      throw new Error('PIPELINE_CANCELLED');
+    }
+  }
+
+  private static async syncDurableCredits(job: DocumentaryJob): Promise<void> {
+    if (!job.billing?.enabled) return;
+    if (job.billing.status === 'settled') return;
+    const { DbManager } = await import('../db');
+    let billing = job.billing;
+
+    if (job.scenes.length > 0) {
+      billing = await DbManager.updateJobBillingSceneCount(job.id, job.scenes.length);
+      billing = await DbManager.consumeJobStage(job.id, 'script');
+    }
+    for (const scene of job.scenes) {
+      if (scene.imageStatus === 'completed' && StorageManager.hasSceneImageArtifact(job.id, scene.sceneNumber)) {
+        billing = await DbManager.consumeJobStage(job.id, 'images', scene.sceneNumber);
+      }
+      if (scene.audioStatus === 'completed' && StorageManager.hasSceneAudioArtifact(job.id, scene.sceneNumber)) {
+        billing = await DbManager.consumeJobStage(job.id, 'narration', scene.sceneNumber);
+      }
+    }
+    for (const sceneNumber of StorageManager.getRenderedSceneNumbers(job.id)) {
+      billing = await DbManager.consumeJobStage(job.id, 'video', sceneNumber);
+    }
+    this.applyBilling(job, billing);
+  }
+
+  private static async persistProgress(job: DocumentaryJob): Promise<void> {
+    await this.throwIfCancelled(job.id);
+    await this.syncDurableCredits(job);
+    await StorageManager.saveJob(job);
+  }
 
   public static async createJob(input: CreateJobInput): Promise<DocumentaryJob> {
     const topic = input.topic.trim();
@@ -39,7 +95,7 @@ export class JobManager {
            j.kidsFormat === kidsFormat &&
            (j.includeSubtitles !== false) === (input.includeSubtitles !== false) &&
            (j.aspectRatio || '16:9') === aspectRatio &&
-           !['completed', 'failed'].includes(j.status)
+           !['completed', 'failed', 'cancelled'].includes(j.status)
     );
     if (existingRunning) {
       return existingRunning;
@@ -54,11 +110,15 @@ export class JobManager {
       throw new Error('Authentication required. Please sign in.');
     }
 
-    const { DbManager } = await import('../db');
-    const reservation = await DbManager.assertCreditsCanBeReserved(input.userId, durationMinutes);
-
     const id = `doc_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
     const totalScenes = durationMinutes * 10;
+    const { DbManager } = await import('../db');
+    const billing = await DbManager.reserveCreditsForJob({
+      userId: input.userId,
+      jobId: id,
+      durationMinutes,
+      sceneCount: totalScenes,
+    });
 
     const job: DocumentaryJob = {
       id,
@@ -73,13 +133,16 @@ export class JobManager {
       language: autoLang,
       voice: input.voice || 'alloy',
       userId: input.userId,
-      creditCost: reservation.cost,
-      creditStatus: reservation.cost > 0 ? 'reserved' : 'not_required',
+      creditCost: billing.totalCredits,
+      creditStatus: billing.totalCredits > 0 ? 'reserved' : 'not_required',
+      creditsConsumed: billing.consumedCredits,
+      creditsReserved: billing.reservedCredits,
+      billing,
       status: 'queued',
       progress: {
         stage: 'queued',
         currentStep: 0,
-        totalSteps: 6,
+        totalSteps: 7,
         stepLabel: 'Job queued...',
         imagesCompleted: 0,
         totalImages: totalScenes,
@@ -98,7 +161,7 @@ export class JobManager {
     try {
       await StorageManager.saveJob(job);
     } catch (error) {
-      await DbManager.releaseReservedCredits(input.userId, reservation.cost);
+      await DbManager.releaseJobCredits(id);
       throw error;
     }
 
@@ -122,18 +185,24 @@ export class JobManager {
       return job;
     }
 
-    if (job.userId && job.creditStatus !== 'reserved' && job.creditStatus !== 'charged' && job.creditStatus !== 'not_required') {
-      const { DbManager } = await import('../db');
-      const reservation = await DbManager.assertCreditsCanBeReserved(job.userId, job.durationMinutes);
-      job.creditCost = reservation.cost;
-      job.creditStatus = reservation.cost > 0 ? 'reserved' : 'not_required';
-      job.creditsReleasedAt = undefined;
+    const { DbManager } = await import('../db');
+    if (!job.billing?.enabled) {
+      if (!job.userId) throw new Error('Authentication required. Please sign in.');
+      this.applyBilling(job, await DbManager.reserveCreditsForJob({
+        userId: job.userId,
+        jobId: job.id,
+        durationMinutes: job.durationMinutes,
+        sceneCount: job.scenes.length || job.durationMinutes * 10,
+      }));
+    } else if (job.billing.status === 'released') {
+      this.applyBilling(job, await DbManager.resumeJobCredits(job.id));
     }
 
     job.error = undefined;
     job.status = 'queued';
+    job.progress.stage = 'queued';
     job.progress.stepLabel = 'Retrying job...';
-    await StorageManager.saveJob(job);
+    await StorageManager.resumeJob(job);
 
     setTimeout(() => {
       this.executeJob(id).catch(err => {
@@ -147,14 +216,31 @@ export class JobManager {
   public static async executeJob(id: string): Promise<DocumentaryJob> {
     const job = await StorageManager.loadJob(id);
     if (!job) throw new Error(`Job ${id} not found`);
+    if (job.status === 'cancelled') return job;
 
     if (this.activeRuns.has(id)) {
       return job;
     }
 
+    const { DbManager } = await import('../db');
+    const leaseId = crypto.randomUUID();
+    if (!await DbManager.claimJobLease(id, leaseId)) return job;
     this.activeRuns.add(id);
 
     try {
+      if (!job.billing?.enabled) {
+        if (!job.userId) throw new Error('Authentication required. Please sign in.');
+        const { DbManager } = await import('../db');
+        this.applyBilling(job, await DbManager.reserveCreditsForJob({
+          userId: job.userId,
+          jobId: job.id,
+          durationMinutes: job.durationMinutes,
+          sceneCount: job.scenes.length || job.durationMinutes * 10,
+        }));
+        await StorageManager.saveJob(job);
+      }
+      await this.syncDurableCredits(job);
+
       // Step 1: Script Generation
       if (!job.scenes || job.scenes.length === 0) {
         job.status = 'writing_script';
@@ -181,41 +267,63 @@ export class JobManager {
         job.scriptSummary = summary;
         job.scenes = scenes;
         job.progress.percent = 15;
-        job.progress.stepLabel = `Script generated with ${scenes.length} scenes.`;
+        job.status = 'reviewing_script';
+        job.progress.stage = 'reviewing_script';
+        job.progress.currentStep = 2;
+        job.progress.stepLabel = `Script ready with ${scenes.length} scenes. Review and approve it to continue.`;
         await StorageManager.saveJob(job);
+        await this.syncDurableCredits(job);
+        await StorageManager.saveJob(job);
+        await this.throwIfCancelled(id);
+        return job;
       }
+
+      if (!job.scriptApprovedAt) {
+        job.status = 'reviewing_script';
+        job.progress.stage = 'reviewing_script';
+        job.progress.currentStep = 2;
+        job.progress.stepLabel = 'Review and approve the script to continue production.';
+        await StorageManager.saveJob(job);
+        return job;
+      }
+
+      await this.throwIfCancelled(id);
 
       // Step 2: Image Generation
       const pendingImages = job.scenes.some(s => s.imageStatus !== 'completed');
       if (pendingImages) {
         job.status = 'generating_images';
         job.progress.stage = 'generating_images';
-        job.progress.currentStep = 2;
+        job.progress.currentStep = 3;
         await StorageManager.saveJob(job);
 
         await ImageGenerator.generateImagesForJob(job, async updated => {
-          await StorageManager.saveJob(updated);
-        });
+          await this.persistProgress(updated);
+        }, () => this.cancelRequests.has(id));
       }
+
+      await this.throwIfCancelled(id);
 
       // Step 3: Narration Generation
       const pendingAudio = job.scenes.some(s => s.audioStatus !== 'completed');
       if (pendingAudio) {
         job.status = 'generating_narration';
         job.progress.stage = 'generating_narration';
-        job.progress.currentStep = 3;
+        job.progress.currentStep = 4;
         await StorageManager.saveJob(job);
 
         await AudioGenerator.generateNarrationForJob(job, async updated => {
-          await StorageManager.saveJob(updated);
-        });
+          await this.persistProgress(updated);
+        }, () => this.cancelRequests.has(id));
       }
+
+      await this.throwIfCancelled(id);
 
       // Step 4: Subtitles
       if (job.includeSubtitles !== false && !job.subtitlesUrl) {
         job.status = 'creating_subtitles';
         job.progress.stage = 'creating_subtitles';
-        job.progress.currentStep = 4;
+        job.progress.currentStep = 5;
         job.progress.stepLabel = 'Creating synchronized SRT subtitles...';
         await StorageManager.saveJob(job);
 
@@ -225,63 +333,120 @@ export class JobManager {
         if (fs.existsSync(subtitlePath)) fs.unlinkSync(subtitlePath);
         job.subtitlesPath = undefined;
         job.subtitlesUrl = undefined;
-        job.progress.currentStep = 4;
+        job.progress.currentStep = 5;
         job.progress.percent = Math.max(job.progress.percent, 75);
         job.progress.stepLabel = 'Subtitle burn-in disabled. Preparing clean video master...';
         await StorageManager.saveJob(job);
       }
 
       // Step 5: Video Rendering
-      if (!job.videoUrl || job.status !== 'completed') {
+      if (!job.videoUrl || (job.status !== 'completed' && job.billing?.status !== 'settled')) {
         job.status = 'rendering_video';
         job.progress.stage = 'rendering_video';
-        job.progress.currentStep = 5;
+        job.progress.currentStep = 6;
         job.progress.stepLabel = 'Rendering Ken Burns 1080p video with FFmpeg...';
         await StorageManager.saveJob(job);
 
         await FFmpegRenderer.renderJobVideo(job, async updated => {
-          await StorageManager.saveJob(updated);
-        });
+          await this.persistProgress(updated);
+        }, () => this.cancelRequests.has(id));
       }
 
-      if (job.userId && job.creditStatus === 'reserved') {
+      await this.syncDurableCredits(job);
+      if (job.billing?.enabled) {
         const { DbManager } = await import('../db');
-        await DbManager.chargeCreditsForCompletedJob(job.userId, job.creditCost || 0, job.id, job.topic);
-        job.creditStatus = 'charged';
-        job.creditsChargedAt = new Date().toISOString();
+        this.applyBilling(job, await DbManager.settleJobCredits(job.id, false));
       }
 
       job.status = 'completed';
       job.progress.stage = 'completed';
       job.progress.percent = 100;
-      job.progress.stepLabel = job.creditStatus === 'charged'
-        ? `Documentary completed. ${job.creditCost} credits charged.`
+      job.progress.stepLabel = job.billing?.enabled && job.billing.totalCredits > 0
+        ? `Documentary completed. ${job.billing.consumedCredits} credits used across completed production stages.`
         : 'Documentary completed successfully!';
       await StorageManager.saveJob(job);
 
       return job;
     } catch (err: unknown) {
       console.error(`[JobManager] Job ${id} failed:`, err);
-      job.status = 'failed';
-      job.error = errorMessage(err, 'An unknown error occurred during documentary generation.');
-      job.progress.stepLabel = `Generation failed: ${job.error}`;
+      const cancelled = errorMessage(err, '') === 'PIPELINE_CANCELLED';
+      job.status = cancelled ? 'cancelled' : 'failed';
+      job.error = cancelled ? undefined : errorMessage(err, 'An unknown error occurred during documentary generation.');
+      job.progress.stage = job.status;
+      job.progress.stepLabel = cancelled ? 'Production stopped by user.' : `Generation failed: ${job.error}`;
       await StorageManager.saveJob(job);
 
-      if (job.creditStatus === 'reserved') {
-        if (job.userId) {
-          const { DbManager } = await import('../db');
-          await DbManager.releaseReservedCredits(job.userId, job.creditCost || 0);
+      if (job.billing?.enabled) {
+        const { DbManager } = await import('../db');
+        try {
+          await this.syncDurableCredits(job);
+        } catch (syncError) {
+          console.warn(`[JobManager] Could not reconcile final durable artifacts for ${id}:`, syncError);
         }
-        job.creditStatus = 'released';
-        job.creditsReleasedAt = new Date().toISOString();
-        job.progress.stepLabel = `Generation failed. Reserved credits were released: ${job.error}`;
+        this.applyBilling(job, await DbManager.releaseJobCredits(job.id));
+        const usage = job.billing.consumedCredits > 0 ? ` ${job.billing.consumedCredits} credits were used for completed work.` : '';
+        job.progress.stepLabel = cancelled
+          ? `Production stopped. Unused reserved credits were released.${usage}`
+          : `Generation failed. Unused reserved credits were released.${usage}`;
         await StorageManager.saveJob(job);
       }
 
       return job;
     } finally {
       this.activeRuns.delete(id);
+      this.cancelRequests.delete(id);
+      await DbManager.releaseJobLease(id, leaseId).catch(error => console.warn(`[JobManager] Could not release worker lease for ${id}:`, error));
     }
+  }
+
+  public static async approveScript(id: string): Promise<DocumentaryJob> {
+    const job = await StorageManager.loadJob(id);
+    if (!job) throw new Error(`Job ${id} not found`);
+    if (job.status !== 'reviewing_script') throw new Error('This script is not awaiting review.');
+    if (job.billing?.enabled) {
+      const { DbManager } = await import('../db');
+      this.applyBilling(job, await DbManager.updateJobBillingSceneCount(job.id, job.scenes.length));
+    }
+    job.scriptApprovedAt = new Date().toISOString();
+    job.status = 'queued';
+    job.progress.stage = 'queued';
+    job.progress.stepLabel = 'Script approved. Continuing production...';
+    await StorageManager.saveJob(job);
+    setTimeout(() => void this.executeJob(id), 100);
+    return job;
+  }
+
+  public static async cancelJob(id: string): Promise<DocumentaryJob> {
+    const job = await StorageManager.loadJob(id);
+    if (!job) throw new Error(`Job ${id} not found`);
+    if (job.status === 'completed') return job;
+    const providerWorkMayBeInFlight = ['writing_script', 'generating_images', 'generating_narration', 'creating_subtitles', 'rendering_video'].includes(job.status);
+    this.cancelRequests.add(id);
+    if (!['failed', 'cancelled'].includes(job.status)) {
+      const cancellation = await StorageManager.requestCancellation(job);
+      if (cancellation.status === 'completed') {
+        this.cancelRequests.delete(id);
+        return cancellation;
+      }
+    }
+    if (providerWorkMayBeInFlight) {
+      job.progress.stepLabel = 'Stopping production. Completed work will be charged before unused credits are released.';
+      await StorageManager.saveJob(job);
+      return job;
+    }
+    if (job.billing?.enabled && job.billing.status !== 'settled') {
+      const { DbManager } = await import('../db');
+      this.applyBilling(job, await DbManager.releaseJobCredits(job.id));
+    }
+    if (job.status !== 'failed') {
+      job.status = 'cancelled';
+      job.progress.stage = 'cancelled';
+    }
+    const usage = job.billing?.consumedCredits ? ` ${job.billing.consumedCredits} credits were used for completed work.` : '';
+    job.progress.stepLabel = `Production stopped. Unused reserved credits were released.${usage}`;
+    await StorageManager.saveJob(job);
+    if (!this.activeRuns.has(id)) this.cancelRequests.delete(id);
+    return job;
   }
 
   public static async reRenderVideo(id: string): Promise<DocumentaryJob> {
@@ -291,24 +456,23 @@ export class JobManager {
     if (this.activeRuns.has(id)) {
       throw new Error(`Job ${id} is currently busy processing`);
     }
-
-    if (job.userId && (job.creditStatus === 'released' || job.creditStatus === 'charge_failed')) {
-      const { DbManager } = await import('../db');
-      const reservation = await DbManager.assertCreditsCanBeReserved(job.userId, job.durationMinutes);
-      job.creditCost = reservation.cost;
-      job.creditStatus = reservation.cost > 0 ? 'reserved' : 'not_required';
-      job.creditsReleasedAt = undefined;
-    }
-
+    const { DbManager } = await import('../db');
+    const leaseId = crypto.randomUUID();
+    if (!await DbManager.claimJobLease(id, leaseId)) throw new Error(`Job ${id} is currently busy processing`);
     this.activeRuns.add(id);
 
     try {
+      if (job.billing?.enabled && job.billing.status === 'released') {
+        const { DbManager } = await import('../db');
+        this.applyBilling(job, await DbManager.resumeJobCredits(job.id));
+      }
       job.status = 'rendering_video';
       job.progress.stage = 'rendering_video';
-      job.progress.currentStep = 5;
+      job.progress.currentStep = 6;
       job.progress.stepLabel = 'Re-rendering video with updated timeline & images...';
       job.error = undefined;
-      await StorageManager.saveJob(job);
+      await StorageManager.resumeJob(job);
+      await this.syncDurableCredits(job);
 
       // 1. Re-concatenate narration audios to match current scene sequence
       await AudioGenerator.concatenateSceneAudios(job);
@@ -325,14 +489,13 @@ export class JobManager {
 
       // 3. Re-render Ken Burns 1080p video with custom/uploaded images and durations
       await FFmpegRenderer.renderJobVideo(job, async updated => {
-        await StorageManager.saveJob(updated);
-      });
+        await this.persistProgress(updated);
+      }, () => this.cancelRequests.has(id));
 
-      if (job.userId && job.creditStatus === 'reserved') {
+      await this.syncDurableCredits(job);
+      if (job.billing?.enabled) {
         const { DbManager } = await import('../db');
-        await DbManager.chargeCreditsForCompletedJob(job.userId, job.creditCost || 0, job.id, job.topic);
-        job.creditStatus = 'charged';
-        job.creditsChargedAt = new Date().toISOString();
+        this.applyBilling(job, await DbManager.settleJobCredits(job.id, true));
       }
 
       job.status = 'completed';
@@ -343,22 +506,28 @@ export class JobManager {
       return job;
     } catch (err: unknown) {
       console.error(`[JobManager] Re-render error for ${id}:`, err);
-      job.status = 'failed';
-      job.error = errorMessage(err, 'Re-rendering video failed');
-      job.progress.stepLabel = `Re-render failed: ${job.error}`;
-      if (job.creditStatus === 'reserved') {
-        if (job.userId) {
-          const { DbManager } = await import('../db');
-          await DbManager.releaseReservedCredits(job.userId, job.creditCost || 0);
+      const cancelled = errorMessage(err, '') === 'PIPELINE_CANCELLED';
+      job.status = cancelled ? 'cancelled' : 'failed';
+      job.progress.stage = job.status;
+      job.error = cancelled ? undefined : errorMessage(err, 'Re-rendering video failed');
+      if (job.billing?.enabled && job.billing.status !== 'settled') {
+        const { DbManager } = await import('../db');
+        try {
+          await this.syncDurableCredits(job);
+        } catch (syncError) {
+          console.warn(`[JobManager] Could not reconcile re-render artifacts for ${id}:`, syncError);
         }
-        job.creditStatus = 'released';
-        job.creditsReleasedAt = new Date().toISOString();
-        job.progress.stepLabel = `Re-render failed. Reserved credits were released: ${job.error}`;
+        this.applyBilling(job, await DbManager.releaseJobCredits(job.id));
       }
+      const usage = job.billing?.consumedCredits ? ` ${job.billing.consumedCredits} credits were used for completed work.` : '';
+      job.progress.stepLabel = cancelled
+        ? `Re-render stopped. Unused reserved credits were released.${usage}`
+        : `Re-render failed. Unused reserved credits were released.${usage}`;
       await StorageManager.saveJob(job);
       throw err;
     } finally {
       this.activeRuns.delete(id);
+      await DbManager.releaseJobLease(id, leaseId).catch(error => console.warn(`[JobManager] Could not release re-render lease for ${id}:`, error));
     }
   }
 }

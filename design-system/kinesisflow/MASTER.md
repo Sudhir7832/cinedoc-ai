@@ -6,7 +6,7 @@
 
 ---
 
-**Project:** CineDoc AI
+**Project:** KinesisFlow
 **Generated:** 2026-10-31 10:36:08
 **Category:** Generative Art Platform
 **Design Dials:** Variance 6/10 (Balanced / Modern) | Motion 4/10 (Standard) | Density 5/10 (Standard)
@@ -19,30 +19,30 @@
 
 | Role | Hex | CSS Variable |
 |------|-----|--------------|
-| Primary | `#18181B` | `--color-primary` |
+| Primary | `#B84B2C` | `--app-brand` |
 | On Primary | `#FFFFFF` | `--color-on-primary` |
-| Secondary | `#3F3F46` | `--color-secondary` |
+| Secondary | `#35566E` | `--app-accent` |
 | On Secondary | `#FFFFFF` | `--color-on-secondary` |
-| Accent/CTA | `#EC4899` | `--color-accent` |
-| On Accent/CTA | `#000000` | `--color-on-accent` |
-| Background | `#FAFAFA` | `--color-background` |
-| Foreground | `#09090B` | `--color-foreground` |
-| Card | `#FFFFFF` | `--color-card` |
-| Card Foreground | `#09090B` | `--color-card-foreground` |
-| Muted | `#E8ECF0` | `--color-muted` |
-| Muted Foreground | `#475569` | `--color-muted-foreground` |
-| Border | `#E4E4E7` | `--color-border` |
+| Accent/CTA | `#B84B2C` | `--app-brand` |
+| On Accent/CTA | `#FFFFFF` | `--app-on-brand` |
+| Background | `#F3F1EC` | `--app-bg` |
+| Foreground | `#191A17` | `--app-text` |
+| Card | `#FBFAF7` | `--app-surface` |
+| Card Foreground | `#191A17` | `--app-text` |
+| Muted | `#EBE8E1` | `--app-surface-soft` |
+| Muted Foreground | `#60635D` | `--app-text-muted` |
+| Border | `#D9D5CB` | `--app-border` |
 | Destructive | `#DC2626` | `--color-destructive` |
 | On Destructive | `#FFFFFF` | `--color-on-destructive` |
-| Ring | `#18181B` | `--color-ring` |
+| Ring | `#B84B2C` | `--app-brand` |
 
-**Color Notes:** Canvas neutral + creative pink
+**Color Notes:** Warm paper neutrals, terracotta action, and slate-blue secondary accents.
 
 ### Typography
 
-- **Heading Font:** Inter
+- **Heading Font:** Newsreader
 - **Body Font:** Inter
-- **Mood:** dark, cinematic, technical, precision, clean, premium, developer, professional, high-end utility
+- **Mood:** warm, editorial, cinematic, practical, trustworthy, and creator-focused
 - **Google Fonts:** [Inter + Inter](https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap)
 
 **CSS Import:**
@@ -82,7 +82,7 @@
 ```css
 /* Primary Button */
 .btn-primary {
-  background: #EC4899;
+  background: #B84B2C;
   color: #000000;
   padding: 12px 24px;
   border-radius: 8px;

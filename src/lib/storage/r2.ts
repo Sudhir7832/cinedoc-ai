@@ -82,7 +82,7 @@ export class R2Storage {
     localMp4Path: string,
     thumbnailPath?: string,
     mediaToken?: string
-  ): Promise<{ videoUrl: string; srtUrl?: string; thumbnailUrl?: string }> {
+  ): Promise<{ videoUrl: string; srtUrl?: string; thumbnailUrl?: string; thumbnailOptions?: string[] }> {
     if (!this.isConfigured()) {
       throw new Error('Cloudflare R2 is not configured.');
     }
@@ -100,12 +100,24 @@ export class R2Storage {
     }
 
     let thumbnailUrl: string | undefined;
+    const thumbnailOptions: string[] = [];
     if (thumbnailPath && fs.existsSync(thumbnailPath)) {
       const result = await this.uploadFile(thumbnailPath, `${prefix}/thumbnail.jpg`, 'image/jpeg');
       thumbnailUrl = result.url;
     }
 
-    return { videoUrl, srtUrl, thumbnailUrl };
+    const localThumb1 = path.join(path.dirname(localMp4Path), 'thumbnail_1.jpg');
+    const localThumb2 = path.join(path.dirname(localMp4Path), 'thumbnail_2.jpg');
+    if (fs.existsSync(localThumb1)) {
+      const res1 = await this.uploadFile(localThumb1, `${prefix}/thumbnail_1.jpg`, 'image/jpeg');
+      thumbnailOptions.push(res1.url);
+    }
+    if (fs.existsSync(localThumb2)) {
+      const res2 = await this.uploadFile(localThumb2, `${prefix}/thumbnail_2.jpg`, 'image/jpeg');
+      thumbnailOptions.push(res2.url);
+    }
+
+    return { videoUrl, srtUrl, thumbnailUrl, thumbnailOptions: thumbnailOptions.length > 0 ? thumbnailOptions : undefined };
   }
 
   public static async deleteJobFiles(jobId: string): Promise<void> {

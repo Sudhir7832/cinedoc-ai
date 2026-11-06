@@ -1,16 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getConfig, saveConfig, maskApiKey } from '@/lib/config';
+import { getConfig, saveConfig } from '@/lib/config';
 import { OpenRouterClient } from '@/lib/openrouter/client';
 import { CloudflareClient } from '@/lib/cloudflare/client';
 import { SessionManager } from '@/lib/auth/session';
 import { AppConfig } from '@/lib/types';
+import { requireSameOrigin } from '@/lib/security/origin';
+import { assertAllowedOutboundUrl } from '@/lib/security/outbound-url';
+import { rateLimit } from '@/lib/security/rate-limit';
+import { parseJsonBody } from '@/lib/security/request';
+import { configMutationSchema } from '@/lib/security/schemas';
+import { secureErrorResponse } from '@/lib/security/errors';
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Unexpected configuration error';
-}
-
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const limited = await rateLimit(req, { bucket: 'public-config', limit: 60, windowSeconds: 60, failClosed: false });
+    if (limited) return limited;
     const config = await getConfig();
     const isKeyConfigured = Boolean(config.agentRouterApiKey || config.openRouterApiKey || config.cloudflareApiToken);
 
@@ -23,12 +27,6 @@ export async function GET() {
         isPuterConfigured: Boolean(config.puterAuthToken),
         isCloudflareConfigured: Boolean(config.cloudflareAccountId && config.cloudflareApiToken),
         isSarvamConfigured: Boolean(config.sarvamApiKey),
-        maskedApiKey: maskApiKey(config.openRouterApiKey),
-        maskedAgentRouterKey: maskApiKey(config.agentRouterApiKey || ''),
-        maskedPuterToken: maskApiKey(config.puterAuthToken || ''),
-        maskedCloudflareToken: maskApiKey(config.cloudflareApiToken || ''),
-        maskedSarvamKey: maskApiKey(config.sarvamApiKey || ''),
-        cloudflareAccountId: config.cloudflareAccountId || '',
         cloudflareImageModel: config.cloudflareImageModel || '@cf/black-forest-labs/flux-1-schnell',
         agentRouterBaseUrl: config.agentRouterBaseUrl || 'https://co.agentrouter.org/v1',
         imageProvider: config.imageProvider || 'cloudflare',
@@ -45,56 +43,54 @@ export async function GET() {
         kidsTtsProvider: config.kidsTtsProvider,
         kidsTtsModel: config.kidsTtsModel,
         kidsTtsVoice: config.kidsTtsVoice,
+        masterOutputVideoUrl: config.masterOutputVideoUrl || '',
+        masterOutputPosterUrl: config.masterOutputPosterUrl || '',
         testMode: config.testMode ?? false,
       },
     });
   } catch (err: unknown) {
-    return NextResponse.json({ success: false, error: errorMessage(err) }, { status: 500 });
+    return secureErrorResponse(err, 'Configuration is unavailable.');
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
+    requireSameOrigin(req);
+    const limited = await rateLimit(req, { bucket: 'admin-config', limit: 20, windowSeconds: 300, failClosed: true });
+    if (limited) return limited;
     await SessionManager.requireAdmin(req);
-    const body = await req.json() as Record<string, unknown>;
-    const readString = (key: string, fallback = '') => typeof body[key] === 'string' ? body[key] as string : fallback;
-    const action = readString('action');
-    const apiKey = readString('apiKey');
-    const agentRouterApiKey = readString('agentRouterApiKey');
-    const agentRouterBaseUrl = readString('agentRouterBaseUrl');
-    const puterAuthToken = readString('puterAuthToken');
-    const cloudflareAccountId = readString('cloudflareAccountId');
-    const cloudflareApiToken = readString('cloudflareApiToken');
-    const cloudflareImageModel = readString('cloudflareImageModel');
-    const imageProvider = readString('imageProvider');
-    const textModel = readString('textModel');
-    const imageModel = readString('imageModel');
-    const ttsModel = readString('ttsModel');
-    const ttsProvider = readString('ttsProvider');
-    const ttsVoice = readString('ttsVoice');
-    const cloudflareTtsModel = readString('cloudflareTtsModel');
-    const cloudflareVoiceId = readString('cloudflareVoiceId');
-    const sarvamApiKey = readString('sarvamApiKey');
-    const documentaryTtsProvider = readString('documentaryTtsProvider');
-    const documentaryTtsModel = readString('documentaryTtsModel');
-    const documentaryTtsVoice = readString('documentaryTtsVoice');
-    const kidsTtsProvider = readString('kidsTtsProvider');
-    const kidsTtsModel = readString('kidsTtsModel');
-    const kidsTtsVoice = readString('kidsTtsVoice');
+    const body = await parseJsonBody(req, configMutationSchema, 16 * 1024);
+    const action = body.action || '';
+    const agentRouterBaseUrl = body.agentRouterBaseUrl || '';
+    const cloudflareImageModel = body.cloudflareImageModel || '';
+    const imageProvider = body.imageProvider || '';
+    const textModel = body.textModel || '';
+    const imageModel = body.imageModel || '';
+    const ttsModel = body.ttsModel || '';
+    const ttsProvider = body.ttsProvider || '';
+    const ttsVoice = body.ttsVoice || '';
+    const cloudflareTtsModel = body.cloudflareTtsModel || '';
+    const cloudflareVoiceId = body.cloudflareVoiceId || '';
+    const documentaryTtsProvider = body.documentaryTtsProvider || '';
+    const documentaryTtsModel = body.documentaryTtsModel || '';
+    const documentaryTtsVoice = body.documentaryTtsVoice || '';
+    const kidsTtsProvider = body.kidsTtsProvider || '';
+    const kidsTtsModel = body.kidsTtsModel || '';
+    const kidsTtsVoice = body.kidsTtsVoice || '';
     const testMode = body.testMode;
-    const provider = readString('provider', 'agentrouter');
+    const provider = body.provider || 'agentrouter';
 
     if (action === 'test_connection') {
       const config = await getConfig();
       if (provider === 'cloudflare') {
-        const actId = cloudflareAccountId || config.cloudflareAccountId;
-        const token = cloudflareApiToken || config.cloudflareApiToken;
+        const actId = config.cloudflareAccountId;
+        const token = config.cloudflareApiToken;
         const result = await CloudflareClient.testConnection(actId, token);
         return NextResponse.json(result);
       }
 
       if (provider === 'puter') {
-        const token = puterAuthToken || config.puterAuthToken;
+        const token = config.puterAuthToken;
         if (!token) {
           return NextResponse.json({ success: false, message: 'Puter Auth Token is not configured.' });
         }
@@ -106,25 +102,20 @@ export async function POST(req: NextRequest) {
             success: true,
             message: `Connected to Puter.js as "${user.username || 'User'}"! Ready for free AI image generation.`,
           });
-        } catch (e: unknown) {
-          return NextResponse.json({ success: false, message: `Puter.js authentication error: ${errorMessage(e)}` });
+        } catch {
+          return NextResponse.json({ success: false, message: 'Puter.js authentication failed.' });
         }
       }
 
       const testKey = provider === 'agentrouter' 
-        ? (agentRouterApiKey || config.agentRouterApiKey)
-        : (apiKey || config.openRouterApiKey);
+        ? config.agentRouterApiKey
+        : config.openRouterApiKey;
       const result = await OpenRouterClient.testConnection(testKey, provider);
       return NextResponse.json(result);
     }
 
     const updates: Partial<AppConfig> = {};
-    if (apiKey !== undefined && apiKey !== '') updates.openRouterApiKey = apiKey.trim();
-    if (agentRouterApiKey !== undefined && agentRouterApiKey !== '') updates.agentRouterApiKey = agentRouterApiKey.trim();
-    if (agentRouterBaseUrl !== undefined && agentRouterBaseUrl !== '') updates.agentRouterBaseUrl = agentRouterBaseUrl.trim();
-    if (puterAuthToken !== undefined && puterAuthToken !== '') updates.puterAuthToken = puterAuthToken.trim();
-    if (cloudflareAccountId !== '') updates.cloudflareAccountId = cloudflareAccountId.trim();
-    if (cloudflareApiToken !== undefined && cloudflareApiToken !== '') updates.cloudflareApiToken = cloudflareApiToken.trim();
+    if (agentRouterBaseUrl) updates.agentRouterBaseUrl = assertAllowedOutboundUrl(agentRouterBaseUrl, ['agentrouter.org']).toString().replace(/\/$/, '');
     if (cloudflareImageModel !== undefined && cloudflareImageModel !== '') updates.cloudflareImageModel = cloudflareImageModel.trim();
     if (['cloudflare', 'openrouter', 'puter'].includes(imageProvider)) updates.imageProvider = imageProvider as AppConfig['imageProvider'];
     if (textModel !== undefined && textModel !== '') updates.textModel = textModel.trim();
@@ -134,7 +125,6 @@ export async function POST(req: NextRequest) {
     if (ttsVoice !== undefined && ttsVoice !== '') updates.ttsVoice = ttsVoice.trim();
     if (cloudflareTtsModel !== undefined && cloudflareTtsModel !== '') updates.cloudflareTtsModel = cloudflareTtsModel.trim();
     if (cloudflareVoiceId !== undefined && cloudflareVoiceId !== '') updates.cloudflareVoiceId = cloudflareVoiceId.trim();
-    if (sarvamApiKey !== undefined && sarvamApiKey !== '') updates.sarvamApiKey = sarvamApiKey.trim();
     if (['neural', 'openrouter', 'cloudflare', 'sarvam'].includes(documentaryTtsProvider)) updates.documentaryTtsProvider = documentaryTtsProvider as AppConfig['documentaryTtsProvider'];
     if (documentaryTtsModel !== undefined && documentaryTtsModel !== '') updates.documentaryTtsModel = documentaryTtsModel.trim();
     if (documentaryTtsVoice !== undefined && documentaryTtsVoice !== '') updates.documentaryTtsVoice = documentaryTtsVoice.trim();
@@ -159,10 +149,6 @@ export async function POST(req: NextRequest) {
         isAgentRouterConfigured: Boolean(saved.agentRouterApiKey),
         isOpenRouterConfigured: Boolean(saved.openRouterApiKey),
         isCloudflareConfigured: Boolean(saved.cloudflareAccountId && saved.cloudflareApiToken),
-        maskedApiKey: maskApiKey(saved.openRouterApiKey),
-        maskedAgentRouterKey: maskApiKey(saved.agentRouterApiKey || ''),
-        maskedCloudflareToken: maskApiKey(saved.cloudflareApiToken || ''),
-        cloudflareAccountId: saved.cloudflareAccountId,
         cloudflareImageModel: saved.cloudflareImageModel,
         agentRouterBaseUrl: saved.agentRouterBaseUrl,
         imageProvider: saved.imageProvider,
@@ -183,12 +169,6 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (err: unknown) {
-    const message = errorMessage(err);
-    const status = message.includes('Authentication required')
-      ? 401
-      : message.includes('Forbidden')
-        ? 403
-        : 500;
-    return NextResponse.json({ success: false, error: message }, { status });
+    return secureErrorResponse(err, 'Configuration update failed.');
   }
 }

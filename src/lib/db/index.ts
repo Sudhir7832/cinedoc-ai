@@ -1,12 +1,32 @@
 import crypto from 'crypto';
-import { CreditLedgerEntry, PaymentTransaction, PricingPack, SaasSettings, SafeUser, User, UserRole } from '../types';
-import { minutesForCredits } from '../credits';
+import { BillingStage, CreditLedgerEntry, JobBillingSnapshot, PaymentTransaction, PricingPack, SaasSettings, SafeUser, User, UserRole } from '../types';
+import { allocateCreditsByStage, creditsForMinutes, minutesForCredits } from '../credits';
 import { getServiceSupabase } from '../supabase/server';
 import type { Database, Json } from '../supabase/database.types';
 
 type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 type TransactionRow = Database['public']['Tables']['payment_transactions']['Row'];
 type SettingsRow = Database['public']['Tables']['saas_settings']['Row'];
+
+type BillingRow = {
+  job_id: string;
+  policy_version: number;
+  status: 'active' | 'settled' | 'released';
+  total_credits: number;
+  consumed_credits: number;
+  reserved_credits: number;
+  script_credits: number;
+  image_credits: number;
+  narration_credits: number;
+  video_credits: number;
+  scene_count: number;
+  settled_at: string | null;
+  released_at: string | null;
+};
+
+type RawRpcClient = {
+  rpc<T>(name: string, args: Record<string, unknown>): Promise<{ data: T | null; error: { message: string } | null }>;
+};
 
 const DEFAULT_PACKS: PricingPack[] = [
   { id: 'pack_creator', name: 'Creator', credits: 150, priceUsd: 11, priceInr: 999, videoMinutes: 15, description: 'For creators producing polished shorts and regular documentary episodes.', popular: false },
@@ -20,7 +40,7 @@ const DEFAULT_SETTINGS: SaasSettings = {
   enableTestMode: false,
   enableStripe: true,
   enableRazorpay: true,
-  enableDodo: false,
+  enableDodo: true,
   stripePublishableKey: '',
   stripeSecretKey: '',
   razorpayKeyId: '',
@@ -69,16 +89,44 @@ function settingsFromRow(row: SettingsRow): SaasSettings {
   return {
     welcomeCredits: Number(row.welcome_credits || 10), creditsPerScene,
     enableTestMode: Boolean(row.enable_test_mode), enableStripe: row.enable_stripe !== false, enableRazorpay: row.enable_razorpay !== false,
-    enableDodo: Boolean(row.enable_dodo ?? dodoPayment.enableDodo),
-    stripePublishableKey: String(row.stripe_publishable_key || ''), stripeSecretKey: String(row.stripe_secret_key || ''),
-    razorpayKeyId: String(row.razorpay_key_id || ''), razorpayKeySecret: String(row.razorpay_key_secret || ''),
-    dodoApiKey: String(row.dodo_api_key || dodoPayment.apiKey || ''), dodoWebhookKey: String(row.dodo_webhook_key || dodoPayment.webhookKey || ''), dodoMode: (row.dodo_mode || dodoPayment.mode) === 'live' ? 'live' : 'test',
+    enableDodo: row.enable_dodo !== false && Boolean(row.enable_dodo ?? dodoPayment.enableDodo ?? true),
+    stripePublishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '', stripeSecretKey: process.env.STRIPE_SECRET_KEY || '',
+    razorpayKeyId: process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '', razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET || '',
+    dodoApiKey: process.env.DODO_PAYMENTS_API_KEY || '', dodoWebhookKey: process.env.DODO_PAYMENTS_WEBHOOK_KEY || '', dodoMode: (process.env.DODO_PAYMENTS_MODE || row.dodo_mode || dodoPayment.mode) === 'live' ? 'live' : 'test',
     pricingPacks: rawPacks.map(pack => ({ ...pack, videoMinutes: minutesForCredits(pack.credits, creditsPerScene) })),
   };
 }
 
 function throwIfError(error: { message: string } | null) {
   if (error) throw new Error(error.message);
+}
+
+function billingFromRow(row: BillingRow): JobBillingSnapshot {
+  return {
+    enabled: true,
+    policyVersion: 1,
+    status: row.status,
+    totalCredits: Number(row.total_credits),
+    consumedCredits: Number(row.consumed_credits),
+    reservedCredits: Number(row.reserved_credits),
+    sceneCount: Number(row.scene_count),
+    allocations: {
+      script: Number(row.script_credits),
+      images: Number(row.image_credits),
+      narration: Number(row.narration_credits),
+      video: Number(row.video_credits),
+    },
+    settledAt: row.settled_at || undefined,
+    releasedAt: row.released_at || undefined,
+  };
+}
+
+async function billingRpc(name: string, args: Record<string, unknown>): Promise<JobBillingSnapshot> {
+  const client = getServiceSupabase() as unknown as RawRpcClient;
+  const { data, error } = await client.rpc<BillingRow>(name, args);
+  throwIfError(error);
+  if (!data) throw new Error(`Billing RPC ${name} did not return a reservation.`);
+  return billingFromRow(data);
 }
 
 export class DbManager {
@@ -147,37 +195,290 @@ export class DbManager {
   }
 
   public static async adjustCredits(userId: string, amount: number): Promise<SafeUser> {
-    const user = await this.getUserById(userId);
-    if (!user) throw new Error('User not found');
-    const floor = user.role === 'admin' ? 0 : (user.reservedCredits || 0);
-    const next = Math.max(floor, user.credits + amount);
-    const actual = next - user.credits;
-    const updated = await this.updateUser(userId, { credits: next });
-    if (actual !== 0) await this.recordCreditLedger({ userId, amount: actual, balanceAfter: next, type: 'admin_adjustment', description: actual > 0 ? 'Credits added by administrator' : 'Credits deducted by administrator' });
-    return updated;
+    try {
+      const client = getServiceSupabase() as unknown as RawRpcClient;
+      const { data, error } = await client.rpc<ProfileRow>('adjust_user_credits_v1', {
+        p_user_id: userId,
+        p_amount: amount,
+      });
+      throwIfError(error);
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row) throw new Error('Updated profile was not returned.');
+      return this.toSafeUser(profileToUser(row));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('schema cache') || msg.includes('PGRST202') || msg.includes('not find the function')) {
+        const user = await this.getUserById(userId);
+        if (!user) throw new Error('User not found');
+        const newCredits = Math.max(0, user.credits + amount);
+        const { data, error } = await getServiceSupabase().from('profiles').update({
+          credits: newCredits,
+          updated_at: new Date().toISOString(),
+        }).eq('id', userId).select('*').single();
+        throwIfError(error);
+        if (!data) throw new Error('Profile update failed');
+        return this.toSafeUser(profileToUser(data));
+      }
+      throw err;
+    }
   }
 
-  public static async assertCreditsCanBeReserved(userId: string, durationMinutes: number): Promise<{ cost: number; availableCredits: number }> {
+  public static async reserveCreditsForJob(params: { userId: string; jobId: string; durationMinutes: number; sceneCount: number }): Promise<JobBillingSnapshot> {
     const settings = await this.getSettings();
-    const cost = durationMinutes * 10 * settings.creditsPerScene;
-    const { data, error } = await getServiceSupabase().rpc('reserve_job_credits', { p_user_id: userId, p_cost: cost });
-    throwIfError(error);
-    if (!data) throw new Error('Credit reservation did not return a profile.');
-    const profile = profileToUser(data);
-    return { cost: profile.role === 'admin' ? 0 : cost, availableCredits: Math.max(0, profile.credits - (profile.reservedCredits || 0)) };
+    const total = creditsForMinutes(params.durationMinutes, settings.creditsPerScene);
+    const allocations = allocateCreditsByStage(total);
+    try {
+      return await billingRpc('reserve_job_credits_v1', {
+        p_job_id: params.jobId,
+        p_user_id: params.userId,
+        p_total_credits: total,
+        p_script_credits: allocations.script,
+        p_image_credits: allocations.images,
+        p_narration_credits: allocations.narration,
+        p_video_credits: allocations.video,
+        p_scene_count: params.sceneCount,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('schema cache') || msg.includes('PGRST202') || msg.includes('not find the function')) {
+        const user = await this.getUserById(params.userId);
+        if (!user) throw new Error('User not found');
+        const available = user.role === 'admin' ? 999999 : (user.credits - (user.reservedCredits || 0));
+        if (user.role !== 'admin' && available < total) {
+          throw new Error(`Insufficient credits. You need ${total} available credits, but you currently have ${available}.`);
+        }
+        if (user.role !== 'admin' && total > 0) {
+          try {
+            await (getServiceSupabase() as unknown as RawRpcClient).rpc('reserve_job_credits', { p_user_id: params.userId, p_cost: total });
+          } catch {
+            await getServiceSupabase().from('profiles').update({
+              reserved_credits: (user.reservedCredits || 0) + total,
+              updated_at: new Date().toISOString(),
+            }).eq('id', params.userId);
+          }
+        }
+        return {
+          enabled: true,
+          policyVersion: 1,
+          status: 'active',
+          totalCredits: user.role === 'admin' ? 0 : total,
+          consumedCredits: 0,
+          reservedCredits: user.role === 'admin' ? 0 : total,
+          allocations: user.role === 'admin' ? { script: 0, images: 0, narration: 0, video: 0 } : allocations,
+          sceneCount: params.sceneCount,
+        };
+      }
+      throw err;
+    }
   }
 
-  public static async releaseReservedCredits(userId: string, cost: number): Promise<void> {
-    if (cost <= 0) return;
-    const { error } = await getServiceSupabase().rpc('release_job_credits', { p_user_id: userId, p_cost: cost });
-    throwIfError(error);
+  public static async updateJobBillingSceneCount(jobId: string, sceneCount: number): Promise<JobBillingSnapshot> {
+    try {
+      return await billingRpc('set_job_billing_scene_count_v1', { p_job_id: jobId, p_scene_count: sceneCount });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('schema cache') || msg.includes('PGRST202') || msg.includes('not find the function')) {
+        return {
+          enabled: true, policyVersion: 1, status: 'active',
+          totalCredits: 0, consumedCredits: 0, reservedCredits: 0,
+          allocations: { script: 0, images: 0, narration: 0, video: 0 }, sceneCount,
+        };
+      }
+      throw err;
+    }
   }
 
-  public static async chargeCreditsForCompletedJob(userId: string, cost: number, jobId: string, topic: string): Promise<SafeUser> {
-    const { data, error } = await getServiceSupabase().rpc('charge_job_credits', { p_user_id: userId, p_cost: cost, p_job_id: jobId, p_topic: topic });
-    throwIfError(error);
-    if (!data) throw new Error('Credit charge did not return a profile.');
-    return this.toSafeUser(profileToUser(data));
+  public static async getJobBilling(jobId: string): Promise<JobBillingSnapshot> {
+    try {
+      return await billingRpc('get_job_credits_v1', { p_job_id: jobId });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('schema cache') || msg.includes('PGRST202') || msg.includes('not find the function')) {
+        return {
+          enabled: true, policyVersion: 1, status: 'active',
+          totalCredits: 0, consumedCredits: 0, reservedCredits: 0,
+          allocations: { script: 0, images: 0, narration: 0, video: 0 }, sceneCount: 10,
+        };
+      }
+      throw err;
+    }
+  }
+
+  public static async consumeJobStage(jobId: string, stage: BillingStage, sceneNumber?: number): Promise<JobBillingSnapshot> {
+    try {
+      return await billingRpc('consume_job_credits_v1', {
+        p_job_id: jobId,
+        p_stage: stage,
+        p_scene_number: sceneNumber ?? null,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('schema cache') || msg.includes('PGRST202') || msg.includes('not find the function')) {
+        return {
+          enabled: true, policyVersion: 1, status: 'active',
+          totalCredits: 0, consumedCredits: 0, reservedCredits: 0,
+          allocations: { script: 0, images: 0, narration: 0, video: 0 }, sceneCount: 10,
+        };
+      }
+      throw err;
+    }
+  }
+
+  public static async resumeJobCredits(jobId: string): Promise<JobBillingSnapshot> {
+    try {
+      return await billingRpc('resume_job_credits_v1', { p_job_id: jobId });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('schema cache') || msg.includes('PGRST202') || msg.includes('not find the function')) {
+        return {
+          enabled: true, policyVersion: 1, status: 'active',
+          totalCredits: 0, consumedCredits: 0, reservedCredits: 0,
+          allocations: { script: 0, images: 0, narration: 0, video: 0 }, sceneCount: 10,
+        };
+      }
+      throw err;
+    }
+  }
+
+  public static async releaseJobCredits(jobId: string): Promise<JobBillingSnapshot> {
+    try {
+      return await billingRpc('release_job_credits_v1', { p_job_id: jobId });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('schema cache') || msg.includes('PGRST202') || msg.includes('not find the function')) {
+        try {
+          const { StorageManager } = await import('../storage');
+          const job = await StorageManager.loadJob(jobId);
+          if (job?.userId && job.creditCost) {
+            try {
+              await (getServiceSupabase() as unknown as RawRpcClient).rpc('release_job_credits', { p_user_id: job.userId, p_cost: job.creditCost });
+            } catch {
+              const user = await this.getUserById(job.userId);
+              if (user) {
+                await getServiceSupabase().from('profiles').update({
+                  reserved_credits: Math.max(0, (user.reservedCredits || 0) - job.creditCost),
+                  updated_at: new Date().toISOString(),
+                }).eq('id', job.userId);
+              }
+            }
+          }
+        } catch {}
+        return {
+          enabled: true, policyVersion: 1, status: 'released',
+          totalCredits: 0, consumedCredits: 0, reservedCredits: 0,
+          allocations: { script: 0, images: 0, narration: 0, video: 0 }, sceneCount: 10,
+          releasedAt: new Date().toISOString(),
+        };
+      }
+      throw err;
+    }
+  }
+
+  public static async settleJobCredits(jobId: string, isRerender = false): Promise<JobBillingSnapshot> {
+    try {
+      return await billingRpc('settle_job_credits_v1', { p_job_id: jobId });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('schema cache') || msg.includes('PGRST202') || msg.includes('not find the function')) {
+        try {
+          const { StorageManager } = await import('../storage');
+          const job = await StorageManager.loadJob(jobId);
+          if (job?.userId && job.creditCost) {
+            // Check if this job generation deduction was already recorded to avoid duplicate charges
+            const { data: existingLedger } = await getServiceSupabase()
+              .from('credit_ledger')
+              .select('id')
+              .eq('reference_id', jobId)
+              .eq('type', 'generation')
+              .limit(1);
+
+            const alreadySettled = existingLedger && existingLedger.length > 0;
+            const user = await this.getUserById(job.userId);
+
+            if (user && !alreadySettled) {
+              const deduction = job.creditCost;
+              const nextCredits = user.role === 'admin' ? user.credits : Math.max(0, user.credits - deduction);
+              const nextReserved = Math.max(0, (user.reservedCredits || 0) - deduction);
+
+              await getServiceSupabase().from('profiles').update({
+                credits: nextCredits,
+                reserved_credits: nextReserved,
+                total_documentaries_created: (user.totalDocumentariesCreated || 0) + 1,
+                updated_at: new Date().toISOString(),
+              }).eq('id', job.userId);
+
+              const styleName = job.contentStyle === 'kids' ? 'Kids Video' : 'Documentary';
+              const actionLabel = isRerender ? 'Re-rendered' : 'Created';
+              const description = `${actionLabel} ${styleName}: "${job.topic || 'Untitled'}" (${job.durationMinutes || 1} min)`;
+
+              try {
+                await this.recordCreditLedger({
+                  userId: job.userId,
+                  amount: user.role === 'admin' ? 0 : -deduction,
+                  balanceAfter: nextCredits,
+                  type: 'generation',
+                  description,
+                  referenceId: jobId,
+                });
+              } catch (ledgerErr) {
+                console.error('[settleJobCredits] Failed to record credit ledger entry:', ledgerErr);
+              }
+            }
+          }
+        } catch (innerErr) {
+          console.error('[settleJobCredits fallback error]:', innerErr);
+        }
+        return {
+          enabled: true, policyVersion: 1, status: 'settled',
+          totalCredits: 0, consumedCredits: 0, reservedCredits: 0,
+          allocations: { script: 0, images: 0, narration: 0, video: 0 }, sceneCount: 10,
+          settledAt: new Date().toISOString(),
+        };
+      }
+      throw err;
+    }
+  }
+
+  public static async claimJobLease(jobId: string, leaseId: string): Promise<boolean> {
+    try {
+      const client = getServiceSupabase() as unknown as RawRpcClient;
+      const { data, error } = await client.rpc<boolean>('claim_documentary_job_lease_v1', {
+        p_job_id: jobId,
+        p_lease_id: leaseId,
+        p_lease_seconds: 3600,
+      });
+      if (error) {
+        if (error.message?.includes('schema cache') || (error as { code?: string })?.code === 'PGRST202' || error.message?.includes('not find the function')) {
+          return true;
+        }
+        throwIfError(error);
+      }
+      return data === true;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('schema cache') || msg.includes('PGRST202') || msg.includes('not find the function')) {
+        return true;
+      }
+      throw err;
+    }
+  }
+
+  public static async releaseJobLease(jobId: string, leaseId: string): Promise<void> {
+    try {
+      const client = getServiceSupabase() as unknown as RawRpcClient;
+      const { error } = await client.rpc<boolean>('release_documentary_job_lease_v1', {
+        p_job_id: jobId,
+        p_lease_id: leaseId,
+      });
+      if (error && !error.message?.includes('schema cache') && (error as { code?: string })?.code !== 'PGRST202' && !error.message?.includes('not find the function')) {
+        throwIfError(error);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!msg.includes('schema cache') && !msg.includes('PGRST202') && !msg.includes('not find the function')) {
+        throw err;
+      }
+    }
   }
 
   public static async getCreditLedger(userId: string): Promise<CreditLedgerEntry[]> {
@@ -196,6 +497,12 @@ export class DbManager {
 
   public static async getTransactions(): Promise<PaymentTransaction[]> {
     const { data, error } = await getServiceSupabase().from('payment_transactions').select('*').order('created_at', { ascending: false });
+    throwIfError(error);
+    return (data || []).map(row => transactionFromRow(row));
+  }
+
+  public static async getTransactionsByUserId(userId: string): Promise<PaymentTransaction[]> {
+    const { data, error } = await getServiceSupabase().from('payment_transactions').select('*').eq('user_id', userId).order('created_at', { ascending: false });
     throwIfError(error);
     return (data || []).map(row => transactionFromRow(row));
   }
@@ -222,32 +529,79 @@ export class DbManager {
     const { data, error } = await getServiceSupabase().from('payment_transactions').insert(row).select('*').single();
     throwIfError(error);
     if (!data) throw new Error('Created transaction was not returned.');
-    const created = transactionFromRow(data);
-    if (created.status === 'completed' && created.creditsAdded > 0) {
-      const user = await this.getUserById(created.userId);
-      if (user) {
-        await this.updateUser(user.id, { credits: user.credits + created.creditsAdded });
-        await this.recordCreditLedger({ userId: user.id, amount: created.creditsAdded, balanceAfter: user.credits + created.creditsAdded, type: 'purchase', description: `${created.packName} credit purchase`, referenceId: created.id });
-      }
-    }
-    return created;
+    return transactionFromRow(data);
   }
 
-  public static async completeTransaction(transactionId: string, updates: { providerPaymentId?: string; creditsAdded: number }): Promise<PaymentTransaction> {
-    const transactions = await this.getTransactions();
-    const tx = transactions.find(item => item.id === transactionId);
-    if (!tx) throw new Error('Transaction not found');
-    if (tx.status === 'completed') return tx;
-    const { data, error } = await getServiceSupabase().from('payment_transactions').update({ status: 'completed', credits_added: updates.creditsAdded, provider_payment_id: updates.providerPaymentId }).eq('id', transactionId).select('*').single();
-    throwIfError(error);
-    if (!data) throw new Error('Completed transaction was not returned.');
-    const completed = transactionFromRow(data);
-    const user = await this.getUserById(completed.userId);
-    if (user && completed.creditsAdded > 0) {
-      await this.updateUser(user.id, { credits: user.credits + completed.creditsAdded });
-      await this.recordCreditLedger({ userId: user.id, amount: completed.creditsAdded, balanceAfter: user.credits + completed.creditsAdded, type: 'purchase', description: `${completed.packName} credit purchase`, referenceId: completed.id });
+  public static async completeTransaction(transactionId: string, providerPaymentId?: string): Promise<PaymentTransaction> {
+    const service = getServiceSupabase();
+    const client = service as unknown as RawRpcClient;
+
+    try {
+      const { data, error } = await client.rpc<TransactionRow>('complete_payment_transaction_v1', {
+        p_transaction_id: transactionId,
+        p_provider_payment_id: providerPaymentId || null,
+      });
+      if (!error && data) {
+        const row = Array.isArray(data) ? data[0] : data;
+        if (row) return transactionFromRow(row);
+      }
+      if (error) {
+        const msg = error.message || '';
+        if (!msg.includes('schema cache') && !msg.includes('PGRST202') && !msg.includes('not find the function')) {
+          throwIfError(error);
+        }
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!msg.includes('schema cache') && !msg.includes('PGRST202') && !msg.includes('not find the function')) {
+        throw err;
+      }
     }
-    return completed;
+
+    // Direct database fallback if RPC is not installed in Supabase:
+    const { data: tx, error: txError } = await service.from('payment_transactions').select('*').eq('id', transactionId).single();
+    throwIfError(txError);
+    if (!tx) throw new Error('Transaction not found');
+    if (tx.status === 'completed') return transactionFromRow(tx);
+
+    const currentUser = await this.getUserById(tx.user_id);
+    if (!currentUser) throw new Error('User not found');
+
+    const nextCredits = currentUser.credits + Number(tx.credits_added);
+    const { error: profileError } = await service.from('profiles').update({ credits: nextCredits }).eq('id', tx.user_id);
+    throwIfError(profileError);
+
+    const { data: updatedTx, error: updateTxError } = await service.from('payment_transactions').update({
+      status: 'completed',
+      provider_payment_id: providerPaymentId || tx.provider_payment_id,
+    }).eq('id', transactionId).select('*').single();
+    throwIfError(updateTxError);
+    if (!updatedTx) throw new Error('Failed to mark transaction completed');
+
+    try {
+      await this.recordCreditLedger({
+        userId: tx.user_id,
+        amount: Number(tx.credits_added),
+        balanceAfter: nextCredits,
+        type: 'purchase',
+        description: `${tx.pack_name} credit purchase`,
+        referenceId: tx.id,
+      });
+    } catch {
+      // Non-fatal if credit_ledger table or schema has constraints
+    }
+
+    return transactionFromRow(updatedTx);
+  }
+
+  public static async claimPaymentWebhook(gateway: 'dodo' | 'stripe' | 'razorpay', eventId: string): Promise<boolean> {
+    const client = getServiceSupabase() as unknown as RawRpcClient;
+    const { data, error } = await client.rpc<boolean>('claim_payment_webhook_v1', {
+      p_gateway: gateway,
+      p_event_id: eventId,
+    });
+    throwIfError(error);
+    return data === true;
   }
 
   public static async getSettings(): Promise<SaasSettings> {
@@ -269,11 +623,7 @@ export class DbManager {
     if (updates.enableTestMode !== undefined) payload.enable_test_mode = updates.enableTestMode;
     if (updates.enableStripe !== undefined) payload.enable_stripe = updates.enableStripe;
     if (updates.enableRazorpay !== undefined) payload.enable_razorpay = updates.enableRazorpay;
-    if (updates.stripePublishableKey !== undefined) payload.stripe_publishable_key = updates.stripePublishableKey;
-    if (updates.stripeSecretKey !== undefined) payload.stripe_secret_key = updates.stripeSecretKey;
-    if (updates.razorpayKeyId !== undefined) payload.razorpay_key_id = updates.razorpayKeyId;
-    if (updates.razorpayKeySecret !== undefined) payload.razorpay_key_secret = updates.razorpayKeySecret;
-    if (updates.enableDodo !== undefined || updates.dodoApiKey !== undefined || updates.dodoWebhookKey !== undefined || updates.dodoMode !== undefined) {
+    if (updates.enableDodo !== undefined || updates.dodoMode !== undefined) {
       const { data: currentRow, error: currentError } = await getServiceSupabase().from('saas_settings').select('runtime_config').eq('id', 'global_config').single();
       throwIfError(currentError);
       const runtime = currentRow?.runtime_config && typeof currentRow.runtime_config === 'object' && !Array.isArray(currentRow.runtime_config)
@@ -287,8 +637,6 @@ export class DbManager {
         dodoPayment: {
           ...existingDodo,
           enableDodo: updates.enableDodo ?? existingDodo.enableDodo ?? false,
-          apiKey: updates.dodoApiKey ?? existingDodo.apiKey ?? '',
-          webhookKey: updates.dodoWebhookKey ?? existingDodo.webhookKey ?? '',
           mode: updates.dodoMode ?? existingDodo.mode ?? 'test',
         },
       } as unknown as Json;

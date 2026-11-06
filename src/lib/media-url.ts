@@ -1,5 +1,5 @@
 export function withMediaVersion(url: string | undefined, version: string | undefined): string | undefined {
-  if (!url || !version || !url.startsWith('/generated/')) return url;
+  if (!url || !version || (!url.startsWith('/generated/') && !url.includes('/media/'))) return url;
   const separator = url.includes('?') ? '&' : '?';
   return `${url}${separator}v=${encodeURIComponent(version)}`;
 }

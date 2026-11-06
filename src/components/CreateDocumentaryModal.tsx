@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { X, Sparkles, Clock, Globe, Image as ImageIcon, Film, Loader2, FileText, Wand2, Coins, Shapes, BookOpen, PartyPopper, Compass, MoonStar, Subtitles, EyeOff, RectangleHorizontal, Smartphone } from 'lucide-react';
+import { X, Sparkles, Clock, Globe, Image as ImageIcon, Film, Loader2, FileText, Wand2, Coins, Shapes, BookOpen, PartyPopper, Compass, MoonStar, Subtitles, EyeOff, RectangleHorizontal, Smartphone, Music2 } from 'lucide-react';
 
 import { ContentStyle, KidsFormat, SafeUser, VideoAspectRatio } from '@/lib/types';
 import { creditsForMinutes } from '@/lib/credits';
@@ -11,7 +11,6 @@ interface CreateDocumentaryModalProps {
   onClose: () => void;
   onJobCreated: (jobId: string) => void;
   apiKeyConfigured: boolean;
-  onOpenSettings: () => void;
   user?: SafeUser | null;
   onOpenBuyCredits?: () => void;
   onOpenAuth?: () => void;
@@ -33,13 +32,15 @@ const KIDS_TOPIC_SUGGESTIONS: Record<KidsFormat, string[]> = {
   entertainment: ['The funniest day in Bubble Town', 'A dancing panda’s surprise party', 'The robot who could not stop hiccuping', 'जादुई खिलौनों की मज़ेदार पार्टी'],
   adventure: ['The little dragon and the rainbow map', 'A friendly mission to Candy Planet', 'The secret island of talking animals', 'नन्हे खोजियों की बादलों वाली यात्रा'],
   bedtime: ['The moon who lost its favorite star', 'A sleepy bear’s journey home', 'The cloud that collected happy dreams', 'चाँद और नन्हे जुगनू की प्यारी कहानी'],
+  rhyme: ['Twinkle Train counting rhyme', 'The dancing animal alphabet song', 'Rain rain rainbow rhyme', 'नानी की प्यारी गिनती वाली कविता'],
 };
 
 const KIDS_FORMATS = [
   { id: 'educational' as const, label: 'Learning', description: 'Simple ideas and discoveries', icon: BookOpen },
   { id: 'entertainment' as const, label: 'Entertainment', description: 'Comedy and playful stories', icon: PartyPopper },
-  { id: 'adventure' as const, label: 'Adventure', description: 'Safe quests and teamwork', icon: Compass },
+  { id: 'adventure' as const, label: 'Adventure', description: 'Gentle quests and teamwork', icon: Compass },
   { id: 'bedtime' as const, label: 'Bedtime', description: 'Calm and cozy stories', icon: MoonStar },
+  { id: 'rhyme' as const, label: 'Animated Rhyme', description: 'Songs with rhythmic character motion', icon: Music2 },
 ];
 
 const SAMPLE_HINDI_SCRIPT = `सिंधु घाटी सभ्यता दुनिया की सबसे प्राचीन और रहस्यमयी नगरीय सभ्यताओं में से एक मानी जाती है।
@@ -91,6 +92,12 @@ const KIDS_SAMPLE_SCRIPTS: Record<KidsFormat, { topicEn: string; topicHi: string
     english: 'The moon noticed that one tiny star was missing from the quiet sky. A soft cloud carried the moon past sleepy birds and whispering trees. They found the star resting inside a warm nest of silver mist. The moon gently guided it back to its sparkling place. Soon the whole sky became still, cozy, and ready for sweet dreams.',
     hindi: 'चाँद ने देखा कि शांत आकाश से एक नन्हा तारा गायब है। मुलायम बादल उसे सोते पक्षियों और फुसफुसाते पेड़ों के पास ले गया। तारा चाँदी जैसी धुंध के गर्म घोंसले में आराम कर रहा था। चाँद उसे धीरे से उसकी चमकती जगह वापस ले आया। पूरा आकाश शांत हुआ और मीठे सपनों के लिए तैयार हो गया।',
   },
+  rhyme: {
+    topicEn: 'The Dancing Animal Alphabet Rhyme',
+    topicHi: 'नाचते जानवरों की वर्णमाला कविता',
+    english: 'A is for ant with a tap tap toe. B is for bear with a bounce hello. C is for cat spinning round and round. Sing every letter with a musical sound. Clap with the animals and rhyme all day, learning the alphabet the joyful way.',
+    hindi: 'अ से अनार लाल-लाल, आ से आम कमाल-कमाल। इ से इमली खट्टी प्यारी, ई से ईख मिठास की क्यारी। ताली बजाओ, साथ में गाओ, हँसते-हँसते अक्षर सीख जाओ।',
+  },
 };
 
 const LANGUAGES = [
@@ -108,7 +115,6 @@ export const CreateDocumentaryModal: React.FC<CreateDocumentaryModalProps> = ({
   onClose,
   onJobCreated,
   apiKeyConfigured,
-  onOpenSettings,
   user,
   onOpenBuyCredits,
   onOpenAuth,
@@ -231,15 +237,7 @@ export const CreateDocumentaryModal: React.FC<CreateDocumentaryModalProps> = ({
         {/* Warning if API Key not set */}
         {!apiKeyConfigured && (
           <div className="mx-4 sm:mx-6 mt-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 flex flex-col items-start gap-2 text-xs text-amber-700 dark:text-amber-300 sm:flex-row sm:items-center sm:justify-between">
-            <span>AI provider setup is incomplete. {user?.role === 'admin' ? 'Add a provider key to continue.' : 'Ask an administrator to finish setup.'}</span>
-            {user?.role === 'admin' && (
-              <button
-                onClick={onOpenSettings}
-                className="btn-secondary !min-h-9 !px-3 !py-1 text-xs"
-              >
-                Add key
-              </button>
-            )}
+            <span>AI provider setup is incomplete. Add the required server credentials to <code>.env.local</code> and restart the application.</span>
           </div>
         )}
 
@@ -298,14 +296,14 @@ export const CreateDocumentaryModal: React.FC<CreateDocumentaryModalProps> = ({
                 aria-pressed={contentStyle === 'documentary'}
               >
                 <span className="flex items-center gap-2 text-xs font-extrabold text-primary"><Film className="h-4 w-4 brand-text" /> Cinematic documentary</span>
-                <span className="mt-1.5 block text-[11px] leading-4 text-secondary">Realistic, factual visuals with a serious cinematic narrative.</span>
+                <span className="mt-1.5 block text-[11px] leading-4 text-secondary">Realistic visual direction with a serious documentary-style narrative. Verify generated claims before publishing.</span>
               </button>
               <button
                 type="button"
                 onClick={() => {
                   setContentStyle('kids');
                 }}
-                className={`min-h-20 rounded-xl border p-3 text-left transition ${contentStyle === 'kids' ? 'border-[var(--app-accent)] bg-purple-500/10 shadow-sm' : 'border-theme bg-[var(--app-surface)] hover:bg-[var(--app-surface-soft)]'}`}
+                className={`min-h-20 rounded-xl border p-3 text-left transition ${contentStyle === 'kids' ? 'border-[var(--app-accent)] bg-[var(--app-accent-soft)] shadow-sm' : 'border-theme bg-[var(--app-surface)] hover:bg-[var(--app-surface-soft)]'}`}
                 aria-pressed={contentStyle === 'kids'}
               >
                 <span className="flex items-center gap-2 text-xs font-extrabold text-primary"><Shapes className="h-4 w-4 text-[var(--app-accent)]" /> Kids & family</span>
@@ -315,8 +313,8 @@ export const CreateDocumentaryModal: React.FC<CreateDocumentaryModalProps> = ({
           </div>
 
           {contentStyle === 'kids' && (
-            <div className="rounded-2xl border border-purple-500/20 bg-purple-500/5 p-3">
-              <label className="block text-[11px] font-semibold text-purple-500 uppercase tracking-wider mb-2">
+            <div className="rounded-2xl border border-[var(--app-accent)] bg-[var(--app-accent-soft)] p-3">
+              <label className="mb-2 block text-[11px] font-semibold uppercase tracking-wider text-[var(--app-accent)]">
                 Kids story format
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -330,10 +328,10 @@ export const CreateDocumentaryModal: React.FC<CreateDocumentaryModalProps> = ({
                       onClick={() => {
                         setKidsFormat(format.id);
                       }}
-                      className={`min-h-16 rounded-xl border p-2.5 text-left transition ${selected ? 'border-purple-500 bg-purple-500/15 shadow-sm' : 'border-theme bg-[var(--app-surface)] hover:border-purple-500/50'}`}
+                      className={`min-h-16 rounded-xl border p-2.5 text-left transition ${selected ? 'border-[var(--app-accent)] bg-[var(--app-surface)] shadow-sm' : 'border-theme bg-[var(--app-surface)] hover:border-[var(--app-accent)]'}`}
                       aria-pressed={selected}
                     >
-                      <span className="flex items-center gap-1.5 text-[11px] font-bold text-primary"><Icon className="h-3.5 w-3.5 text-purple-500" /> {format.label}</span>
+                      <span className="flex items-center gap-1.5 text-[11px] font-bold text-primary"><Icon className="h-3.5 w-3.5 text-[var(--app-accent)]" /> {format.label}</span>
                       <span className="mt-1 block text-[10px] leading-4 text-secondary">{format.description}</span>
                     </button>
                   );
@@ -478,7 +476,7 @@ export const CreateDocumentaryModal: React.FC<CreateDocumentaryModalProps> = ({
                   <span className="flex items-center gap-2 text-xs font-extrabold text-primary"><RectangleHorizontal className="h-4 w-4 brand-text" /> 16:9 Landscape</span>
                   <span className="mt-1 block text-[10px] leading-4 text-secondary">YouTube, websites, and widescreen players.</span>
                 </button>
-                <button type="button" onClick={() => setAspectRatio('9:16')} className={`min-h-16 rounded-xl border p-3 text-left transition ${aspectRatio === '9:16' ? 'border-[var(--app-accent)] bg-purple-500/10 shadow-sm' : 'border-theme bg-[var(--app-surface)] hover:bg-[var(--app-surface-soft)]'}`} aria-pressed={aspectRatio === '9:16'}>
+                <button type="button" onClick={() => setAspectRatio('9:16')} className={`min-h-16 rounded-xl border p-3 text-left transition ${aspectRatio === '9:16' ? 'border-[var(--app-accent)] bg-[var(--app-accent-soft)] shadow-sm' : 'border-theme bg-[var(--app-surface)] hover:bg-[var(--app-surface-soft)]'}`} aria-pressed={aspectRatio === '9:16'}>
                   <span className="flex items-center gap-2 text-xs font-extrabold text-primary"><Smartphone className="h-4 w-4 text-[var(--app-accent)]" /> 9:16 Vertical</span>
                   <span className="mt-1 block text-[10px] leading-4 text-secondary">Reels, TikTok, Shorts, and mobile feeds.</span>
                 </button>
@@ -491,7 +489,7 @@ export const CreateDocumentaryModal: React.FC<CreateDocumentaryModalProps> = ({
             {/* Language Selection */}
             <div>
               <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-secondary">
-                <Globe className="w-3.5 h-3.5 text-indigo-400" />
+                <Globe className="h-3.5 w-3.5 text-[var(--app-accent)]" />
                 Language Override
               </label>
               <select
@@ -526,7 +524,7 @@ export const CreateDocumentaryModal: React.FC<CreateDocumentaryModalProps> = ({
               <button
                 type="button"
                 onClick={() => setIncludeSubtitles(false)}
-                className={`min-h-16 rounded-xl border p-3 text-left transition ${!includeSubtitles ? 'border-[var(--app-accent)] bg-purple-500/10 shadow-sm' : 'border-theme bg-[var(--app-surface)] hover:bg-[var(--app-surface-soft)]'}`}
+                className={`min-h-16 rounded-xl border p-3 text-left transition ${!includeSubtitles ? 'border-[var(--app-accent)] bg-[var(--app-accent-soft)] shadow-sm' : 'border-theme bg-[var(--app-surface)] hover:bg-[var(--app-surface-soft)]'}`}
                 aria-pressed={!includeSubtitles}
               >
                 <span className="flex items-center gap-2 text-xs font-extrabold text-primary"><EyeOff className="h-4 w-4 text-[var(--app-accent)]" /> Clean video</span>

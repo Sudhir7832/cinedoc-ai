@@ -1,8 +1,9 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter, Newsreader } from 'next/font/google';
 import Script from 'next/script';
 import './globals.css';
 import { AuthProviderWrapper } from '@/components/AuthProviderWrapper';
+import { assertLaunchConfiguration, getSiteUrl } from '@/lib/brand';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -10,41 +11,48 @@ const inter = Inter({
   variable: '--font-inter',
 });
 
+const newsreader = Newsreader({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-newsreader',
+});
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
-  applicationName: 'CineDoc AI',
+  metadataBase: new URL(getSiteUrl()),
+  applicationName: 'KinesisFlow',
   title: {
-    default: 'CineDoc AI | AI Documentary and Kids Video Studio',
-    template: '%s | CineDoc AI',
+    default: 'KinesisFlow | Documentary and Kids Video Creator',
+    template: '%s | KinesisFlow',
   },
-  description: 'Create AI documentaries and Kids & Family videos with scripts, visuals, narration, optional subtitles, timeline editing, and production-ready rendering.',
+  description: 'Create documentary-style videos and Kids & Family videos with AI-assisted scripts, visuals, narration, optional subtitles, timeline editing, and MP4 rendering.',
   keywords: ['AI documentary generator', 'AI kids video generator', 'text to video studio', 'AI narration', 'documentary maker', 'Kids & Family videos'],
-  alternates: { canonical: '/' },
   openGraph: {
     type: 'website',
-    siteName: 'CineDoc AI',
-    title: 'CineDoc AI | AI Video Production Studio',
-    description: 'Produce documentaries and Kids & Family stories with audience-aware visuals, narration, subtitles, and timeline editing.',
-    url: '/',
+    siteName: 'KinesisFlow',
+    title: 'KinesisFlow | Documentary and Kids Video Creator',
+    description: 'Create documentary-style and Kids & Family videos with guided visuals, narration, subtitles, and timeline editing.',
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'KinesisFlow documentary and Kids & Family video creator' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'CineDoc AI | AI Video Production Studio',
-    description: 'Create complete AI documentaries and Kids & Family videos in one production workflow.',
+    title: 'KinesisFlow | Documentary and Kids Video Creator',
+    description: 'Create documentary-style and Kids & Family videos in one guided workflow.',
+    images: ['/opengraph-image'],
   },
 };
 
 export const viewport: Viewport = {
   colorScheme: 'light dark',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f5f6f8' },
-    { media: '(prefers-color-scheme: dark)', color: '#090a0e' },
+    { media: '(prefers-color-scheme: light)', color: '#f3f1ec' },
+    { media: '(prefers-color-scheme: dark)', color: '#11120f' },
   ],
 };
 
 const themeScript = `
   try {
-    const saved = localStorage.getItem('cinedoc-theme');
+    const saved = localStorage.getItem('kinesisflow-theme') || localStorage.getItem('cinedoc-theme');
+    if (saved && !localStorage.getItem('kinesisflow-theme')) localStorage.setItem('kinesisflow-theme', saved);
     const dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
     document.documentElement.classList.toggle('dark', dark);
     document.documentElement.dataset.theme = dark ? 'dark' : 'light';
@@ -52,10 +60,11 @@ const themeScript = `
 `;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  assertLaunchConfiguration();
   return (
-    <html lang="en" className={inter.variable} suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${newsreader.variable}`} suppressHydrationWarning>
       <body className="min-h-full">
-        <Script id="cinedoc-theme" strategy="beforeInteractive">{themeScript}</Script>
+        <Script id="kinesisflow-theme" strategy="beforeInteractive">{themeScript}</Script>
         <AuthProviderWrapper>{children}</AuthProviderWrapper>
       </body>
     </html>

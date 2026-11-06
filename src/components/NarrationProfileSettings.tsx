@@ -5,7 +5,6 @@ import { TtsProvider } from '@/lib/types';
 import { hasSarvamVoice, SARVAM_VOICE_GROUPS } from '@/lib/sarvam/voices';
 
 export interface NarrationSettingsValue {
-  sarvamApiKey: string;
   hasSarvamKey: boolean;
   documentaryTtsProvider: TtsProvider;
   documentaryTtsModel: string;
@@ -71,12 +70,12 @@ function ProfileEditor({
   return (
     <section className="surface-card rounded-3xl p-5 sm:p-6">
       <div className="flex items-start gap-3">
-        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isKids ? 'bg-purple-500/10 text-purple-500' : 'brand-soft'}`}>
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isKids ? 'accent-soft' : 'brand-soft'}`}>
           <Icon className="h-5 w-5" aria-hidden="true" />
         </span>
         <div>
           <h4 className="text-sm font-extrabold text-primary">{isKids ? 'Kids & Family narration' : 'Documentary narration'}</h4>
-          <p className="mt-1 text-[11px] leading-5 text-secondary">{isKids ? 'Friendly, expressive voices for entertainment, adventures, learning, and bedtime.' : 'Authoritative voices for factual, cinematic productions.'}</p>
+          <p className="mt-1 text-[11px] leading-5 text-secondary">{isKids ? 'Friendly, expressive voices for entertainment, adventures, learning, and bedtime.' : 'Measured voices for documentary-style, cinematic productions.'}</p>
         </div>
       </div>
 
@@ -140,7 +139,7 @@ export function NarrationProfileSettings({ value, onChange }: NarrationProfileSe
     <div className="space-y-4">
       <section className="surface-card rounded-3xl p-5 sm:p-6">
         <div className="flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-500"><KeyRound className="h-5 w-5" /></span>
+          <span className="accent-soft flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"><KeyRound className="h-5 w-5" /></span>
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-sm font-extrabold text-primary">Sarvam AI connection</h3>
@@ -149,23 +148,10 @@ export function NarrationProfileSettings({ value, onChange }: NarrationProfileSe
             <p className="mt-1 text-[11px] leading-5 text-secondary">The subscription key stays server-side. Enter a value only to add or replace it.</p>
           </div>
         </div>
-        <label className="mt-4 block text-xs font-semibold text-secondary">
-          Sarvam API subscription key
-          <div className="relative mt-1.5">
-            <Mic2 className="absolute left-3 top-3.5 h-4 w-4 text-secondary" />
-            <input
-              type="password"
-              value={value.sarvamApiKey}
-              onChange={event => onChange({ sarvamApiKey: event.target.value })}
-              className="app-field pl-10 font-mono text-xs"
-              placeholder={value.hasSarvamKey ? 'Configured · enter a new key to replace' : 'Add a rotated Sarvam key'}
-              autoComplete="new-password"
-            />
-          </div>
-        </label>
+        <div className="surface-soft mt-4 flex items-center gap-2 rounded-xl p-3 text-xs text-secondary"><Mic2 className="h-4 w-4" /><span>{value.hasSarvamKey ? 'Sarvam credential loaded securely from the server environment.' : 'Set SARVAM_API_KEY in .env.local to enable Sarvam.'}</span></div>
       </section>
 
-      {(value.documentaryTtsProvider === 'sarvam' || value.kidsTtsProvider === 'sarvam') && !value.hasSarvamKey && !value.sarvamApiKey && (
+      {(value.documentaryTtsProvider === 'sarvam' || value.kidsTtsProvider === 'sarvam') && !value.hasSarvamKey && (
         <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 p-3 text-xs font-semibold text-amber-700 dark:text-amber-300" role="alert">
           Add a Sarvam subscription key before saving a profile that uses Sarvam AI.
         </div>

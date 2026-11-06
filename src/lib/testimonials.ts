@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { TestimonialFormat, TestimonialVideo } from './types';
+import { TestimonialCategory, TestimonialFormat, TestimonialVideo } from './types';
 import { getServiceSupabase } from './supabase/server';
 import { R2Storage } from './storage/r2';
 
@@ -11,8 +11,51 @@ function ensureStorage() {
   fs.mkdirSync(PUBLIC_DIR, { recursive: true });
 }
 
+function extractCategoryAndQuote(row: Record<string, unknown>): { category: TestimonialCategory; quote: string | undefined; description: string } {
+  const explicitCategory = row.category as string | undefined;
+  if (explicitCategory === 'kids' || explicitCategory === 'documentary') {
+    return { 
+      category: explicitCategory as TestimonialCategory, 
+      quote: row.quote ? String(row.quote).replace(/<!--category:(kids|documentary)-->|\[category:(kids|documentary)\]/gi, '').trim() || undefined : undefined,
+      description: row.description ? String(row.description).replace(/<!--category:(kids|documentary)-->|\[category:(kids|documentary)\]/gi, '').trim() : '',
+    };
+  }
+
+  const rawQuote = row.quote ? String(row.quote) : '';
+  const rawDesc = row.description ? String(row.description) : '';
+  const rawAttr = row.attribution ? String(row.attribution) : '';
+  const rawTitle = row.title ? String(row.title) : '';
+
+  const hasKidsTag = /<!--category:kids-->|\[category:kids\]/i.test(rawQuote) ||
+                     /<!--category:kids-->|\[category:kids\]/i.test(rawDesc) ||
+                     /<!--category:kids-->|\[category:kids\]/i.test(rawAttr) ||
+                     /<!--category:kids-->|\[category:kids\]/i.test(rawTitle);
+
+  const cleanQuote = rawQuote.replace(/<!--category:(kids|documentary)-->|\[category:(kids|documentary)\]/gi, '').trim() || undefined;
+  const cleanDesc = rawDesc.replace(/<!--category:(kids|documentary)-->|\[category:(kids|documentary)\]/gi, '').trim();
+
+  return {
+    category: hasKidsTag ? 'kids' : 'documentary',
+    quote: cleanQuote,
+    description: cleanDesc,
+  };
+}
+
 function fromRow(row: Record<string, unknown>): TestimonialVideo {
-  return { id: String(row.id), title: String(row.title), description: String(row.description || ''), videoUrl: String(row.video_url), posterUrl: row.poster_url ? String(row.poster_url) : undefined, format: row.format as TestimonialFormat, quote: row.quote ? String(row.quote) : undefined, attribution: row.attribution ? String(row.attribution) : undefined, published: Boolean(row.published), createdAt: String(row.created_at) };
+  const { category, quote, description } = extractCategoryAndQuote(row);
+  return {
+    id: String(row.id),
+    title: String(row.title),
+    description,
+    videoUrl: String(row.video_url),
+    posterUrl: row.poster_url ? String(row.poster_url) : undefined,
+    format: (row.format as TestimonialFormat) || 'landscape',
+    category,
+    quote,
+    attribution: row.attribution ? String(row.attribution).replace(/<!--category:(kids|documentary)-->|\[category:(kids|documentary)\]/gi, '').trim() : undefined,
+    published: Boolean(row.published),
+    createdAt: String(row.created_at),
+  };
 }
 
 function removeLocalAsset(url?: string) {
@@ -38,6 +81,7 @@ export class TestimonialManager {
     videoUrl: string;
     posterUrl?: string;
     format: TestimonialFormat;
+    category: TestimonialCategory;
     quote?: string;
     attribution?: string;
     published?: boolean;
@@ -48,8 +92,33 @@ export class TestimonialManager {
       published: input.published !== false,
       createdAt: new Date().toISOString(),
     };
-    const { data, error } = await getServiceSupabase().from('testimonials').insert({ id: item.id, title: item.title, description: item.description, video_url: item.videoUrl, poster_url: item.posterUrl, format: item.format, quote: item.quote, attribution: item.attribution, published: item.published, created_at: item.createdAt }).select('*').single();
-    if (error) throw new Error(error.message);
+
+    const tag = `<!--category:${item.category}-->`;
+    const quoteWithTag = item.quote ? `${item.quote} ${tag}` : tag;
+    const descWithTag = item.description ? `${item.description} ${tag}` : tag;
+
+    const payload: Record<string, unknown> = {
+      id: item.id,
+      title: item.title,
+      description: descWithTag,
+      video_url: item.videoUrl,
+      poster_url: item.posterUrl || null,
+      format: item.format,
+      category: item.category,
+      quote: quoteWithTag,
+      attribution: item.attribution || null,
+      published: item.published,
+      created_at: item.createdAt,
+    };
+
+    let { data, error } = await getServiceSupabase().from('testimonials').insert(payload).select('*').single();
+    if (error && (error.message.includes('category') || (error as { code?: string })?.code === '42703')) {
+      delete payload.category;
+      const retry = await getServiceSupabase().from('testimonials').insert(payload).select('*').single();
+      data = retry.data;
+      error = retry.error;
+    }
+    if (error || !data) throw new Error(error?.message || 'Failed to save testimonial.');
     return fromRow(data);
   }
 

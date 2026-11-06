@@ -1,10 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { DbManager } from '@/lib/db';
 import { SCENES_PER_MINUTE } from '@/lib/credits';
 import { connection } from 'next/server';
+import { rateLimit } from '@/lib/security/rate-limit';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const limited = await rateLimit(req, { bucket: 'public-payment-packs', limit: 60, windowSeconds: 60, failClosed: false });
+    if (limited) return limited;
     await connection();
     const settings = await DbManager.getSettings();
     return NextResponse.json({
@@ -16,18 +19,15 @@ export async function GET() {
       welcomeCredits: settings.welcomeCredits,
       stripeEnabled: settings.enableStripe,
       stripeAvailable: Boolean(settings.enableStripe && settings.stripePublishableKey && settings.stripeSecretKey),
-      stripePublishableKey: settings.stripePublishableKey,
       razorpayEnabled: settings.enableRazorpay,
       razorpayAvailable: Boolean(settings.enableRazorpay && settings.razorpayKeyId && settings.razorpayKeySecret),
-      razorpayKeyId: settings.razorpayKeyId,
       dodoEnabled: settings.enableDodo,
-      dodoAvailable: Boolean(settings.enableDodo && settings.dodoApiKey && settings.pricingPacks.some(pack => pack.dodoProductId)),
+      dodoAvailable: Boolean(settings.enableDodo && settings.dodoApiKey),
       dodoMode: settings.dodoMode,
     });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to load pricing packs';
+  } catch {
     return NextResponse.json(
-      { success: false, error: message },
+      { success: false, error: 'Failed to load pricing packs.' },
       { status: 500 }
     );
   }

@@ -86,40 +86,40 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
 
   return (
     <div className="modal-scrim fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
-      <div className="modal-panel rounded-3xl w-full max-w-md overflow-hidden relative">
-        {/* Header decoration */}
-        <div className="h-2 bg-gradient-to-r from-amber-500 via-indigo-500 to-purple-600" />
+      <div className="modal-panel relative w-full max-w-md overflow-hidden rounded-3xl">
+        <div className="h-1.5 bg-[var(--app-brand)]" />
 
         <div className="p-6 sm:p-8">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+              <div className="brand-soft flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--app-brand)]">
                 <Sparkles className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-white tracking-tight">
+                <h2 className="text-xl font-extrabold tracking-tight text-primary">
                   {tab === 'login' ? 'Sign In' : 'Create Free Account'}
-                </h3>
-                <p className="text-xs text-gray-400">
-                  {tab === 'login' ? 'Access your AI documentaries and credits' : 'Includes 10 free credits for your first minute'}
+                </h2>
+                <p className="text-xs text-secondary">
+                  {tab === 'login' ? 'Access your KinesisFlow projects and credits' : 'Includes 10 starter credits'}
                 </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-white p-2 rounded-xl hover:bg-gray-800 transition"
+              className="icon-button !h-10 !w-10"
+              aria-label="Close sign-in dialog"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Tab Selector */}
-          <div className="flex p-1 bg-gray-950/70 rounded-2xl border border-gray-800 mb-6">
+          <div className="surface-soft mb-6 flex rounded-xl p-1">
             <button
               type="button"
               onClick={() => { setTab('login'); setError(''); }}
               className={`flex-1 py-2 text-xs font-semibold rounded-xl transition ${
-                tab === 'login' ? 'bg-gray-800 text-white shadow' : 'text-gray-400 hover:text-white'
+                tab === 'login' ? 'border border-theme bg-[var(--app-surface)] text-primary shadow-sm' : 'text-secondary hover:text-[var(--app-text)]'
               }`}
             >
               Sign In
@@ -128,11 +128,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
               type="button"
               onClick={() => { setTab('register'); setError(''); }}
               className={`flex-1 py-2 text-xs font-semibold rounded-xl transition flex items-center justify-center gap-1.5 ${
-                tab === 'register' ? 'bg-amber-500 text-gray-950 shadow font-bold' : 'text-gray-400 hover:text-white'
+                tab === 'register' ? 'bg-[var(--app-brand)] text-[var(--app-on-brand)] shadow-sm font-bold' : 'text-secondary hover:text-[var(--app-text)]'
               }`}
             >
               <span>Sign Up</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-400/30 text-amber-950 font-extrabold uppercase">
+              <span className="rounded-full bg-[var(--app-surface)] px-1.5 py-0.5 text-[10px] font-extrabold uppercase text-[var(--app-brand)]">
                 Free
               </span>
             </button>
@@ -155,13 +155,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           </div>
 
           {error && (
-            <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-medium">
+            <div className="danger-soft mb-4 rounded-xl border border-[var(--app-danger)] p-3 text-xs font-medium" role="alert">
               {error}
             </div>
           )}
 
           {successMsg && (
-            <div className="mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium flex items-center gap-2">
+            <div className="success-soft mb-4 flex items-center gap-2 rounded-xl border border-[var(--app-success)] p-3 text-xs font-medium" role="status">
               <Check className="w-4 h-4" />
               <span>{successMsg}</span>
             </div>
@@ -170,47 +170,47 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           <form onSubmit={handleSubmit} className="space-y-4">
             {tab === 'register' && (
               <div>
-                <label className="block text-xs font-semibold text-gray-300 mb-1.5">Your Name</label>
+                <label className="mb-1.5 block text-xs font-semibold text-primary">Your name</label>
                 <div className="relative">
-                  <UserIcon className="w-4 h-4 text-gray-500 absolute left-3.5 top-3.5" />
+                  <UserIcon className="absolute left-3.5 top-3.5 h-4 w-4 text-secondary" />
                   <input
                     type="text"
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. Alex Miller"
-                    className="w-full bg-gray-950/70 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                    className="app-field pl-10 pr-4 text-sm"
                   />
                 </div>
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-gray-300 mb-1.5">Email Address</label>
+              <label className="mb-1.5 block text-xs font-semibold text-primary">Email address</label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-gray-500 absolute left-3.5 top-3.5" />
+                <Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-secondary" />
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
-                  className="w-full bg-gray-950/70 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                  className="app-field pl-10 pr-4 text-sm"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-300 mb-1.5">Password</label>
+              <label className="mb-1.5 block text-xs font-semibold text-primary">Password</label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-gray-500 absolute left-3.5 top-3.5" />
+                <Lock className="absolute left-3.5 top-3.5 h-4 w-4 text-secondary" />
                 <input
                   type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Minimum 6 characters"
-                  className="w-full bg-gray-950/70 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                  className="app-field pl-10 pr-4 text-sm"
                 />
               </div>
             </div>
@@ -218,13 +218,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-gray-950 font-bold text-sm shadow-lg shadow-amber-950/30 flex items-center justify-center gap-2 transition disabled:opacity-50 mt-2"
+              className="btn-primary mt-2 w-full text-sm disabled:opacity-50"
             >
               {loading ? (
-                <div className="w-5 h-5 border-2 border-gray-950 border-t-transparent rounded-full animate-spin" />
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
               ) : (
                 <>
-                  <span>{tab === 'login' ? 'Sign In to Dashboard' : 'Claim 50 Credits & Sign Up'}</span>
+                  <span>{tab === 'login' ? 'Sign in to workspace' : 'Create account'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -232,7 +232,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           </form>
 
           {tab === 'register' && (
-            <p className="text-[11px] text-gray-500 text-center mt-4">
+            <p className="mt-4 text-center text-[11px] text-secondary">
               New accounts receive 10 starter credits.
             </p>
           )}

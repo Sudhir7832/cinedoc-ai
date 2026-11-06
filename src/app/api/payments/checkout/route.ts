@@ -2,18 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { SessionManager } from '@/lib/auth/session';
 import { DbManager } from '@/lib/db';
 import crypto from 'crypto';
+import { getCanonicalOrigin, requireSameOrigin } from '@/lib/security/origin';
+import { assertAllowedOutboundUrl } from '@/lib/security/outbound-url';
+import { rateLimit } from '@/lib/security/rate-limit';
+import { parseJsonBody } from '@/lib/security/request';
+import { checkoutSchema } from '@/lib/security/schemas';
+import { secureErrorResponse } from '@/lib/security/errors';
 
 export async function POST(req: NextRequest) {
   try {
+    requireSameOrigin(req);
+    const limited = await rateLimit(req, { bucket: 'payment-checkout', limit: 10, windowSeconds: 300, failClosed: true });
+    if (limited) return limited;
     const user = await SessionManager.requireAuth(req);
-    const body = await req.json();
-    const { packId, gateway = 'test', currency = 'USD' } = body;
-
-    if (!['test', 'stripe', 'razorpay', 'dodo'].includes(gateway)) {
-      return NextResponse.json({ success: false, error: 'Invalid payment gateway.' }, { status: 400 });
+    const { packId, gateway, currency } = await parseJsonBody(req, checkoutSchema, 4 * 1024);
+    if (gateway === 'razorpay' && currency !== 'INR') {
+      return NextResponse.json({ success: false, error: 'Razorpay checkout is available in INR.' }, { status: 400 });
     }
-    if (!['USD', 'INR'].includes(currency)) {
-      return NextResponse.json({ success: false, error: 'Currency must be USD or INR.' }, { status: 400 });
+    if (gateway === 'stripe' && currency !== 'USD') {
+      return NextResponse.json({ success: false, error: 'Stripe checkout is available in USD.' }, { status: 400 });
     }
 
     const settings = await DbManager.getSettings();
@@ -22,7 +29,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Invalid pricing pack selected' }, { status: 400 });
     }
 
-    const amount = currency === 'INR' ? pack.priceInr : pack.priceUsd;
+    const amount = (gateway === 'dodo' || currency === 'USD') ? pack.priceUsd : pack.priceInr;
+    const checkoutCurrency = gateway === 'dodo' ? 'USD' : currency;
 
     // 1. Sandbox / 1-Click Test Checkout Mode
     if (gateway === 'test') {
@@ -30,7 +38,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'Sandbox checkout is restricted to administrators.' }, { status: 403 });
       }
       const paymentId = `test_pay_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
-      const tx = await DbManager.recordTransaction({
+      const pending = await DbManager.recordTransaction({
         userId: user.id,
         userEmail: user.email,
         packId: pack.id,
@@ -39,9 +47,10 @@ export async function POST(req: NextRequest) {
         currency,
         creditsAdded: pack.credits,
         gateway: 'test',
-        status: 'completed',
+        status: 'pending',
         paymentId,
       });
+      const tx = await DbManager.completeTransaction(pending.id, paymentId);
 
       const updatedUser = await DbManager.getUserById(user.id);
 
@@ -67,7 +76,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Create Stripe Checkout Session using Stripe REST API
-      const origin = req.nextUrl.origin || 'http://localhost:3000';
+      const origin = getCanonicalOrigin(req);
       const unitAmountInCents = Math.round(amount * 100);
 
       const params = new URLSearchParams();
@@ -108,16 +117,17 @@ export async function POST(req: NextRequest) {
         packName: pack.name,
         amount,
         currency,
-        creditsAdded: 0, // Assigned on webhook / verify
+        creditsAdded: pack.credits,
         gateway: 'stripe',
         status: 'pending',
         paymentId: session.id,
       });
 
+      const checkoutUrl = assertAllowedOutboundUrl(String(session.url || ''), ['stripe.com']).toString();
       return NextResponse.json({
         success: true,
         mode: 'stripe',
-        checkoutUrl: session.url,
+        checkoutUrl,
         sessionId: session.id,
       });
     }
@@ -130,7 +140,7 @@ export async function POST(req: NextRequest) {
 
       const pending = await DbManager.recordTransaction({
         userId: user.id, userEmail: user.email, packId: pack.id, packName: pack.name, amount,
-        currency, creditsAdded: 0, gateway: 'dodo', status: 'pending', paymentId: `dodo_pending_${Date.now()}`,
+        currency: checkoutCurrency, creditsAdded: pack.credits, gateway: 'dodo', status: 'pending', paymentId: `dodo_pending_${Date.now()}`,
       });
       const endpoint = settings.dodoMode === 'live' ? 'https://live.dodopayments.com/checkouts' : 'https://test.dodopayments.com/checkouts';
       const dodoResponse = await fetch(endpoint, {
@@ -139,10 +149,10 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({
           product_cart: [{ product_id: pack.dodoProductId, quantity: 1 }],
           customer: { email: user.email, name: user.name },
-          billing_currency: currency,
+          billing_currency: checkoutCurrency,
           allowed_payment_method_types: ['credit', 'debit', 'apple_pay', 'google_pay'],
-          return_url: `${req.nextUrl.origin}/?payment=success&gateway=dodo`,
-          cancel_url: `${req.nextUrl.origin}/?payment=cancelled&gateway=dodo`,
+          return_url: `${getCanonicalOrigin(req)}/?payment=success&gateway=dodo&tx_id=${pending.id}`,
+          cancel_url: `${getCanonicalOrigin(req)}/?payment=cancelled&gateway=dodo`,
           metadata: { transaction_id: pending.id, user_id: user.id, pack_id: pack.id, credits: pack.credits },
           feature_flags: { redirect_immediately: true },
         }),
@@ -153,7 +163,8 @@ export async function POST(req: NextRequest) {
         throw new Error(dodo.message || dodo.error?.message || 'Dodo checkout initialization failed.');
       }
       await DbManager.updateTransactionReference(pending.id, dodo.session_id, dodo.payment_id || undefined);
-      return NextResponse.json({ success: true, mode: 'dodo', checkoutUrl: dodo.checkout_url, sessionId: dodo.session_id });
+      const checkoutUrl = assertAllowedOutboundUrl(String(dodo.checkout_url), ['dodopayments.com']).toString();
+      return NextResponse.json({ success: true, mode: 'dodo', checkoutUrl, sessionId: dodo.session_id });
     }
 
     // 4. Razorpay Orders Integration
@@ -203,7 +214,7 @@ export async function POST(req: NextRequest) {
         packName: pack.name,
         amount: pack.priceInr,
         currency: 'INR',
-        creditsAdded: 0,
+        creditsAdded: pack.credits,
         gateway: 'razorpay',
         status: 'pending',
         paymentId: order.id,
@@ -222,10 +233,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: false, error: 'Unknown payment gateway specified' }, { status: 400 });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Checkout failed';
-    return NextResponse.json(
-      { success: false, error: message },
-      { status: 500 }
-    );
+    return secureErrorResponse(err, 'Checkout failed.');
   }
 }

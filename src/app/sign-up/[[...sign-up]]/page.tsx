@@ -5,7 +5,7 @@ import { SignUpPageClient } from '@/components/SignUpPageClient';
 
 export const metadata: Metadata = {
   title: 'Create Account',
-  description: 'Create a CineDoc AI account and start producing videos.',
+  description: 'Create a KinesisFlow account and start producing videos.',
   robots: { index: false, follow: false },
 };
 
