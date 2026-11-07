@@ -6,10 +6,14 @@ import { SessionManager } from '@/lib/auth/session';
 import { parseJobId } from '@/lib/security/schemas';
 import { rateLimit } from '@/lib/security/rate-limit';
 import { parseJsonBody } from '@/lib/security/request';
+import { YouTubeThumbnailGenerator } from '@/lib/video/thumbnail';
 import { z } from 'zod';
 
-const updateThumbnailSchema = z.object({
-  thumbnailUrl: z.string().min(1).max(2000),
+const thumbnailRequestSchema = z.object({
+  thumbnailUrl: z.string().min(1).max(2000).optional(),
+  action: z.enum(['select', 'regenerate']).optional(),
+}).refine(data => data.thumbnailUrl || data.action === 'regenerate', {
+  message: 'Either thumbnailUrl or action "regenerate" must be provided.',
 });
 
 export async function POST(
@@ -26,8 +30,25 @@ export async function POST(
     const limited = await rateLimit(req, { bucket: 'job-thumbnail', limit: 30, windowSeconds: 60, failClosed: true, discriminator: user.id });
     if (limited) return limited;
 
-    const body = await parseJsonBody(req, updateThumbnailSchema, 8 * 1024);
+    const body = await parseJsonBody(req, thumbnailRequestSchema, 8 * 1024);
+
+    if (body.action === 'regenerate') {
+      const generated = await YouTubeThumbnailGenerator.generateThumbnails(job, {
+        durationSeconds: job.finalDurationSeconds,
+      });
+      await StorageManager.saveJob(job);
+      return NextResponse.json({
+        success: true,
+        thumbnailUrl: generated.thumbnailUrl,
+        thumbnailOptions: generated.thumbnailOptions,
+        message: 'Catchy YouTube thumbnails regenerated successfully.',
+      });
+    }
+
     const { thumbnailUrl } = body;
+    if (!thumbnailUrl) {
+      return NextResponse.json({ success: false, error: 'thumbnailUrl is required when selecting thumbnail.' }, { status: 400 });
+    }
 
     job.thumbnailUrl = thumbnailUrl;
 
@@ -52,7 +73,8 @@ export async function POST(
     return NextResponse.json({
       success: true,
       thumbnailUrl: job.thumbnailUrl,
-      message: 'YouTube thumbnail updated successfully.',
+      thumbnailOptions: job.thumbnailOptions,
+      message: 'Active YouTube thumbnail updated successfully.',
     });
   } catch (err: unknown) {
     console.error('[Update Thumbnail Error]:', err);
@@ -61,4 +83,3 @@ export async function POST(
     return NextResponse.json({ success: false, error: message }, { status });
   }
 }
-

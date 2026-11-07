@@ -164,7 +164,7 @@ export const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {thumbnailCandidates.map((thumbUrl, idx) => {
                 const isSelected = activeThumb === thumbUrl;
-                const label = idx === 0 ? 'Option 1: Hook Opening' : 'Option 2: Climax & Climax Peak';
+                const label = idx === 0 ? 'Option 1: Catchy Hook (High CTR)' : 'Option 2: Climax & Mystery (Peak Drama)';
 
                 return (
                   <div

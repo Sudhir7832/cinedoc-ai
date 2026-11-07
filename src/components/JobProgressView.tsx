@@ -653,7 +653,10 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {thumbnailCandidates.map((thumbUrl, idx) => {
               const isSelected = activeThumb === thumbUrl;
-              const optionLabel = idx === 0 ? 'Option 1: Hook Opening' : 'Option 2: Climax & Story Peak';
+              const optionLabel = idx === 0 ? 'Option 1: Catchy Hook (High CTR)' : 'Option 2: Climax & Mystery (Peak Drama)';
+              const optionDesc = idx === 0
+                ? 'High-vibrancy hero shot crafted to maximize clicks in YouTube feeds'
+                : 'Dramatic high-contrast composition with intense curiosity gap';
 
               return (
                 <div
@@ -692,10 +695,10 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
 
                   {/* Footer & Actions */}
                   <div className="p-3.5 flex items-center justify-between gap-2 border-t border-theme">
-                    <div>
-                      <p className="text-xs font-bold text-primary">{optionLabel}</p>
-                      <p className="text-[11px] text-secondary">
-                        {isSelected ? 'Currently set as video poster' : 'Click to apply as thumbnail'}
+                    <div className="min-w-0 pr-2">
+                      <p className="text-xs font-bold text-primary truncate">{optionLabel}</p>
+                      <p className="text-[11px] text-secondary truncate">
+                        {optionDesc}
                       </p>
                     </div>
 

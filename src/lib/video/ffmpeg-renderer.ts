@@ -7,6 +7,7 @@ import { StorageManager } from '../storage';
 import { VideoValidator } from './validator';
 import { R2Storage } from '../storage/r2';
 import { CloudflareClient } from '../cloudflare/client';
+import { YouTubeThumbnailGenerator } from './thumbnail';
 
 const execAsync = promisify(exec);
 
@@ -216,42 +217,18 @@ export class FFmpegRenderer {
       throw new Error(`Video rendering finished, but validation failed: ${validation.error}`);
     }
 
-    const thumbnailPath = path.join(jobDir, 'thumbnail.jpg');
-    const thumbnailPath1 = path.join(jobDir, 'thumbnail_1.jpg');
-    const thumbnailPath2 = path.join(jobDir, 'thumbnail_2.jpg');
-    const thumbnailSize = isVertical ? '720:1280' : '1280:720';
-
+    // Step E: Generate Catchy YouTube Thumbnails (16:9 High-CTR format)
     try {
-      const dur = Math.max(3, validation.durationSeconds || 10);
-      const seek1 = Math.max(0.5, Math.min(2.5, dur * 0.15));
-      const seek2 = Math.max(seek1 + 2.0, Math.min(dur - 0.8, dur * 0.55));
+      job.progress.stepLabel = 'Generating catchy YouTube thumbnails...';
+      if (onProgressUpdate) await onProgressUpdate(job);
 
-      // Option 1: Opening hook frame (16:9 YouTube format)
-      await execAsync(`ffmpeg -y -ss ${seek1.toFixed(2)} -i "${finalMp4Path}" -frames:v 1 -update 1 -vf "scale=${thumbnailSize}:force_original_aspect_ratio=increase,crop=${thumbnailSize}" -q:v 2 "${thumbnailPath1}"`);
-      // Option 2: Midpoint/climax frame (16:9 YouTube format)
-      await execAsync(`ffmpeg -y -ss ${seek2.toFixed(2)} -i "${finalMp4Path}" -frames:v 1 -update 1 -vf "scale=${thumbnailSize}:force_original_aspect_ratio=increase,crop=${thumbnailSize}" -q:v 2 "${thumbnailPath2}"`);
-
-      // Set default active thumbnail
-      fs.copyFileSync(thumbnailPath1, thumbnailPath);
-      job.thumbnailPath = thumbnailPath;
-
-      const localThumb1 = StorageManager.getLocalMediaUrl(job.id, 'thumbnail_1.jpg');
-      const localThumb2 = StorageManager.getLocalMediaUrl(job.id, 'thumbnail_2.jpg');
-      job.thumbnailOptions = [localThumb1, localThumb2];
-      job.thumbnailUrl = localThumb1;
+      await YouTubeThumbnailGenerator.generateThumbnails(job, {
+        cleanVideoPath: mergedVideoNoAudio,
+        finalMp4Path,
+        durationSeconds: validation.durationSeconds,
+      });
     } catch (thumbnailError) {
-      console.warn('[Thumbnail] YouTube thumbnails generation failed, falling back:', thumbnailError);
-      try {
-        if (job.scenes && job.scenes.length > 0) {
-          const scene1Img = job.scenes[0].imagePath;
-          const scene2Idx = Math.min(job.scenes.length - 1, Math.max(1, Math.floor(job.scenes.length / 2)));
-          const scene2Img = job.scenes[scene2Idx].imagePath;
-          if (scene1Img && scene2Img) {
-            job.thumbnailOptions = [scene1Img, scene2Img];
-            job.thumbnailUrl = scene1Img;
-          }
-        }
-      } catch {}
+      console.warn('[Thumbnail] YouTube thumbnails generation error, falling back:', thumbnailError);
     }
 
     // Clean up temporary render folder
