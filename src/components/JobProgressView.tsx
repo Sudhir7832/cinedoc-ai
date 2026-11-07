@@ -556,28 +556,42 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
                 key={s.key}
                 className={`p-3.5 rounded-2xl border text-center transition flex flex-col items-center justify-center ${
                   status === 'active'
-                    ? 'bg-amber-500/10 border-amber-500/60 shadow-lg shadow-amber-500/10'
+                    ? 'bg-amber-500/10 border-amber-500/50 shadow-sm'
                     : status === 'completed'
-                    ? 'bg-emerald-950/20 border-emerald-800/40'
+                    ? 'bg-emerald-500/10 border-emerald-500/30'
                     : status === 'failed'
-                    ? 'bg-rose-950/30 border-rose-800/50'
-                    : 'bg-gray-950/60 border-gray-800/60 opacity-60'
+                    ? 'bg-rose-500/10 border-rose-500/30'
+                    : 'bg-[var(--app-surface-soft)]/50 border-[var(--app-border)]/70 opacity-75'
                 }`}
               >
                 <div className="mb-2">
-                  {status === 'active' && <Loader2 className="w-5 h-5 text-amber-400 animate-spin" />}
-                  {status === 'completed' && <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
-                  {status === 'failed' && <AlertTriangle className="w-5 h-5 text-rose-400" />}
-                  {status === 'pending' && <Circle className="w-5 h-5 text-gray-600" />}
+                  {status === 'active' && <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />}
+                  {status === 'completed' && <CheckCircle2 className="w-5 h-5 text-emerald-500" />}
+                  {status === 'failed' && <AlertTriangle className="w-5 h-5 text-rose-500" />}
+                  {status === 'pending' && <Circle className="w-5 h-5 text-secondary/50" />}
                 </div>
-                <span className="text-xs font-semibold text-gray-200">{s.label}</span>
+                <span className={`text-xs font-semibold ${
+                  status === 'completed'
+                    ? 'text-emerald-900 dark:text-emerald-200'
+                    : status === 'active'
+                    ? 'text-amber-900 dark:text-amber-200'
+                    : 'text-primary'
+                }`}>{s.label}</span>
                 {s.key === 'generating_images' && (
-                  <span className="text-[10px] text-amber-400/90 font-mono mt-1">
+                  <span className={`text-[10px] font-mono font-medium mt-1 ${
+                    status === 'completed'
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : 'text-amber-600 dark:text-amber-400'
+                  }`}>
                     {job.progress.imagesCompleted} / {job.progress.totalImages} imgs
                   </span>
                 )}
                 {s.key === 'generating_narration' && (
-                  <span className="text-[10px] text-indigo-400/90 font-mono mt-1">
+                  <span className={`text-[10px] font-mono font-medium mt-1 ${
+                    status === 'completed'
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : 'text-amber-600 dark:text-amber-400'
+                  }`}>
                     {job.progress.audioCompleted} / {job.progress.totalAudio} scenes
                   </span>
                 )}
@@ -889,7 +903,7 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-800/60 text-[10px] text-gray-500">
                       <div className="flex items-center gap-2">
                         <span className="flex items-center gap-1">
-                          <Volume2 className="w-3 h-3 text-indigo-400" />
+                          <Volume2 className="w-3 h-3 text-amber-500 dark:text-amber-400" />
                           {scene.audioDurationSeconds ? `${scene.audioDurationSeconds.toFixed(1)}s` : '~6s'}
                         </span>
                         <span>•</span>
