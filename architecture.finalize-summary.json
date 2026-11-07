@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "C:\\Users\\SUDHIR\\Desktop\\New folder (5)\\automation agent\\.archify\\architecture-cinedoc-20261107-124100\\candidate.json",
+    "sha256": "a5c3e3507cf49f9d7abcaea71dddeccc907536ceca67c4a58b9194ab60c7f1c9",
+    "bytes": 9609
+  },
+  "artifact": {
+    "path": "C:\\Users\\SUDHIR\\Desktop\\New folder (5)\\automation agent\\architecture.html",
+    "sha256": "2e537afdf2d00a9564c0c6de9b1c60cf4b6b564316412e1ddf928bccaea51b44",
+    "bytes": 881672
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "C:\\Users\\SUDHIR\\Desktop\\New folder (5)\\automation agent\\architecture.finalize.json",
+    "summaryReceipt": "C:\\Users\\SUDHIR\\Desktop\\New folder (5)\\automation agent\\architecture.finalize-summary.json",
+    "browserCheckReceipt": "C:\\Users\\SUDHIR\\Desktop\\New folder (5)\\automation agent\\architecture.browser-check.json"
+  },
+  "update": {
+    "status": "current",
+    "installedVersion": "3.2.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": null,
+    "checkedAt": "2026-11-07T07:13:00.363Z",
+    "source": "cache",
+    "noticeRequired": false,
+    "noticeText": null
+  },
+  "visualReview": "not-requested",
+  "durationMs": 15401,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  },
+  "visualReviewRecommendation": {
+    "action": "inspect-route-readability",
+    "signals": {
+      "resolvedCrossovers": 1
+    },
+    "reason": "Automated gates passed, but crossings or detours still need perceptual review before claiming visual quality.",
+    "affectedRoutes": {
+      "crossings": [
+        {
+          "left": {
+            "id": "orchestrator-to-image",
+            "from": "job_orchestrator",
+            "to": "image_service",
+            "label": "2. Generate Images",
+            "collectionIndex": 7,
+            "artifactIndex": 8
+          },
+          "right": {
+            "id": "orchestrator-to-render",
+            "from": "job_orchestrator",
+            "to": "video_renderer",
+            "label": "4. Assemble Video",
+            "collectionIndex": 9,
+            "artifactIndex": 10
+          },
+          "point": [
+            660,
+            212.4
+          ],
+          "sharedNode": "job_orchestrator"
+        }
+      ],
+      "detours": [],
+      "truncated": false
+    },
+    "hints": [
+      "job_orchestrator → image_service and job_orchestrator → video_renderer cross next to job_orchestrator: move node image_service or video_renderer so the two reach job_orchestrator from different sides (for example one level with it, one directly above or below it)."
+    ],
+    "repair": "Trace these relationships at the desktop viewport. For Architecture, use references/architecture-layout-repair.md: reflow a blocked main path or tangled connected scene, and repair an isolated defect locally only when the surrounding composition is accepted. Preserve all semantic content and user-fixed geometry. Rerun finalize once after the edit."
+  }
+}

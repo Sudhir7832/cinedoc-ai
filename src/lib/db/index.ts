@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { BillingStage, CreditLedgerEntry, JobBillingSnapshot, PaymentTransaction, PricingPack, SaasSettings, SafeUser, User, UserRole } from '../types';
+import { BillingStage, CreditLedgerEntry, DocumentaryJob, JobBillingSnapshot, PaymentTransaction, PricingPack, SaasSettings, SafeUser, User, UserRole } from '../types';
 import { allocateCreditsByStage, creditsForMinutes, minutesForCredits } from '../credits';
 import { getServiceSupabase } from '../supabase/server';
 import type { Database, Json } from '../supabase/database.types';
@@ -141,10 +141,52 @@ export class DbManager {
     return (data || []).map(row => profileToUser(row));
   }
 
-  public static async getUserById(id: string): Promise<User | null> {
+  public static async getUserById(id: string, skipReconcile = false): Promise<User | null> {
     const { data, error } = await getServiceSupabase().from('profiles').select('*').eq('id', id).maybeSingle();
     throwIfError(error);
-    return data ? profileToUser(data) : null;
+    if (!data) return null;
+    const user = profileToUser(data);
+
+    // If user has reserved credits held, ensure completed jobs are settled and orphaned holds are reconciled
+    if (!skipReconcile && user.role !== 'admin' && (user.reservedCredits || 0) > 0) {
+      try {
+        await this.reconcileUserReservedCredits(user.id);
+        const { data: updated } = await getServiceSupabase().from('profiles').select('*').eq('id', id).maybeSingle();
+        if (updated) return profileToUser(updated);
+      } catch (recErr) {
+        console.error('[getUserById] Credit reconciliation error:', recErr);
+      }
+    }
+
+    return user;
+  }
+
+  public static async reconcileUserReservedCredits(userId: string): Promise<void> {
+    const { data: jobRows } = await getServiceSupabase()
+      .from('documentary_jobs')
+      .select('data')
+      .eq('user_id', userId);
+
+    const jobs = (jobRows || []).map(r => r.data as unknown as DocumentaryJob).filter(Boolean);
+    const activeStages = ['queued', 'starting', 'scripting', 'awaiting_review', 'review', 'generating_media', 'rendering_video', 'rendering'];
+    const activeJobs = jobs.filter(j => activeStages.includes(j.status));
+
+    // Settle any completed jobs that have not been charged or settled
+    const completedUnsettled = jobs.filter(j => j.status === 'completed' && j.creditStatus !== 'charged' && j.billing?.status !== 'settled');
+    for (const completedJob of completedUnsettled) {
+      await this.settleJobCredits(completedJob.id);
+    }
+
+    // If user has no active jobs, reserved_credits must be 0
+    if (activeJobs.length === 0) {
+      const userRes = await getServiceSupabase().from('profiles').select('reserved_credits').eq('id', userId).single();
+      if (userRes.data && (userRes.data.reserved_credits || 0) > 0) {
+        await getServiceSupabase().from('profiles').update({
+          reserved_credits: 0,
+          updated_at: new Date().toISOString(),
+        }).eq('id', userId);
+      }
+    }
   }
 
   public static async getUserByEmail(email: string): Promise<User | null> {
@@ -278,10 +320,28 @@ export class DbManager {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes('schema cache') || msg.includes('PGRST202') || msg.includes('not find the function')) {
+        try {
+          const { StorageManager } = await import('../storage');
+          const job = await StorageManager.loadJob(jobId);
+          if (job?.billing && job.billing.totalCredits > 0) {
+            return {
+              ...job.billing,
+              sceneCount,
+            };
+          }
+          if (job?.creditCost && job.creditCost > 0) {
+            const cost = job.creditCost;
+            return {
+              enabled: true, policyVersion: 1, status: 'active',
+              totalCredits: cost, consumedCredits: job.creditsConsumed || 0, reservedCredits: cost,
+              allocations: allocateCreditsByStage(cost), sceneCount,
+            };
+          }
+        } catch {}
         return {
           enabled: true, policyVersion: 1, status: 'active',
-          totalCredits: 0, consumedCredits: 0, reservedCredits: 0,
-          allocations: { script: 0, images: 0, narration: 0, video: 0 }, sceneCount,
+          totalCredits: 10, consumedCredits: 0, reservedCredits: 10,
+          allocations: { script: 1, images: 5, narration: 2, video: 2 }, sceneCount,
         };
       }
       throw err;
@@ -294,10 +354,24 @@ export class DbManager {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes('schema cache') || msg.includes('PGRST202') || msg.includes('not find the function')) {
+        try {
+          const { StorageManager } = await import('../storage');
+          const job = await StorageManager.loadJob(jobId);
+          if (job?.billing && job.billing.totalCredits > 0) {
+            return job.billing;
+          }
+          if (job?.creditCost && job.creditCost > 0) {
+            return {
+              enabled: true, policyVersion: 1, status: 'active',
+              totalCredits: job.creditCost, consumedCredits: job.creditsConsumed || 0, reservedCredits: job.creditCost,
+              allocations: allocateCreditsByStage(job.creditCost), sceneCount: job.scenes?.length || 10,
+            };
+          }
+        } catch {}
         return {
           enabled: true, policyVersion: 1, status: 'active',
-          totalCredits: 0, consumedCredits: 0, reservedCredits: 0,
-          allocations: { script: 0, images: 0, narration: 0, video: 0 }, sceneCount: 10,
+          totalCredits: 10, consumedCredits: 0, reservedCredits: 10,
+          allocations: { script: 1, images: 5, narration: 2, video: 2 }, sceneCount: 10,
         };
       }
       throw err;
@@ -314,10 +388,24 @@ export class DbManager {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes('schema cache') || msg.includes('PGRST202') || msg.includes('not find the function')) {
+        try {
+          const { StorageManager } = await import('../storage');
+          const job = await StorageManager.loadJob(jobId);
+          if (job?.billing && job.billing.totalCredits > 0) {
+            return job.billing;
+          }
+          if (job?.creditCost && job.creditCost > 0) {
+            return {
+              enabled: true, policyVersion: 1, status: 'active',
+              totalCredits: job.creditCost, consumedCredits: job.creditsConsumed || 0, reservedCredits: job.creditCost,
+              allocations: allocateCreditsByStage(job.creditCost), sceneCount: job.scenes?.length || 10,
+            };
+          }
+        } catch {}
         return {
           enabled: true, policyVersion: 1, status: 'active',
-          totalCredits: 0, consumedCredits: 0, reservedCredits: 0,
-          allocations: { script: 0, images: 0, narration: 0, video: 0 }, sceneCount: 10,
+          totalCredits: 10, consumedCredits: 0, reservedCredits: 10,
+          allocations: { script: 1, images: 5, narration: 2, video: 2 }, sceneCount: 10,
         };
       }
       throw err;
@@ -330,10 +418,17 @@ export class DbManager {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes('schema cache') || msg.includes('PGRST202') || msg.includes('not find the function')) {
+        try {
+          const { StorageManager } = await import('../storage');
+          const job = await StorageManager.loadJob(jobId);
+          if (job?.billing && job.billing.totalCredits > 0) {
+            return { ...job.billing, status: 'active' };
+          }
+        } catch {}
         return {
           enabled: true, policyVersion: 1, status: 'active',
-          totalCredits: 0, consumedCredits: 0, reservedCredits: 0,
-          allocations: { script: 0, images: 0, narration: 0, video: 0 }, sceneCount: 10,
+          totalCredits: 10, consumedCredits: 0, reservedCredits: 10,
+          allocations: { script: 1, images: 5, narration: 2, video: 2 }, sceneCount: 10,
         };
       }
       throw err;
@@ -346,17 +441,22 @@ export class DbManager {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes('schema cache') || msg.includes('PGRST202') || msg.includes('not find the function')) {
+        let total = 0;
         try {
           const { StorageManager } = await import('../storage');
           const job = await StorageManager.loadJob(jobId);
-          if (job?.userId && job.creditCost) {
+          if (job?.userId) {
+            const cost = (job.creditCost && job.creditCost > 0)
+              ? job.creditCost
+              : creditsForMinutes(job.durationMinutes || 1, 10);
+            total = cost;
             try {
-              await (getServiceSupabase() as unknown as RawRpcClient).rpc('release_job_credits', { p_user_id: job.userId, p_cost: job.creditCost });
+              await (getServiceSupabase() as unknown as RawRpcClient).rpc('release_job_credits', { p_user_id: job.userId, p_cost: cost });
             } catch {
-              const user = await this.getUserById(job.userId);
+              const user = await this.getUserById(job.userId, true);
               if (user) {
                 await getServiceSupabase().from('profiles').update({
-                  reserved_credits: Math.max(0, (user.reservedCredits || 0) - job.creditCost),
+                  reserved_credits: Math.max(0, (user.reservedCredits || 0) - cost),
                   updated_at: new Date().toISOString(),
                 }).eq('id', job.userId);
               }
@@ -365,7 +465,7 @@ export class DbManager {
         } catch {}
         return {
           enabled: true, policyVersion: 1, status: 'released',
-          totalCredits: 0, consumedCredits: 0, reservedCredits: 0,
+          totalCredits: total, consumedCredits: 0, reservedCredits: 0,
           allocations: { script: 0, images: 0, narration: 0, video: 0 }, sceneCount: 10,
           releasedAt: new Date().toISOString(),
         };
@@ -380,11 +480,18 @@ export class DbManager {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes('schema cache') || msg.includes('PGRST202') || msg.includes('not find the function')) {
+        let settledAmount = 10;
         try {
           const { StorageManager } = await import('../storage');
           const job = await StorageManager.loadJob(jobId);
-          if (job?.userId && job.creditCost) {
-            // Check if this job generation deduction was already recorded to avoid duplicate charges
+          if (job?.userId) {
+            const settings = await this.getSettings().catch(() => ({ creditsPerScene: 10 }));
+            const duration = job.durationMinutes || 1;
+            const fallbackCost = creditsForMinutes(duration, settings.creditsPerScene || 10);
+            const deduction = (job.creditCost && job.creditCost > 0) ? job.creditCost : fallbackCost;
+            settledAmount = deduction;
+
+            // Check if this job generation deduction was already recorded in credit_ledger
             const { data: existingLedger } = await getServiceSupabase()
               .from('credit_ledger')
               .select('id')
@@ -392,37 +499,62 @@ export class DbManager {
               .eq('type', 'generation')
               .limit(1);
 
-            const alreadySettled = existingLedger && existingLedger.length > 0;
-            const user = await this.getUserById(job.userId);
+            const alreadySettled = Boolean(existingLedger && existingLedger.length > 0);
+            const user = await this.getUserById(job.userId, true);
 
-            if (user && !alreadySettled) {
-              const deduction = job.creditCost;
-              const nextCredits = user.role === 'admin' ? user.credits : Math.max(0, user.credits - deduction);
-              const nextReserved = Math.max(0, (user.reservedCredits || 0) - deduction);
+            if (user) {
+              const currentCredits = user.credits;
+              const currentReserved = user.reservedCredits || 0;
+              // If not already settled in ledger, deduct credits; otherwise keep current
+              const nextCredits = user.role === 'admin'
+                ? currentCredits
+                : (alreadySettled ? currentCredits : Math.max(0, currentCredits - deduction));
+              // Always deduct/release reserved credits on settlement so they never get stuck!
+              const nextReserved = Math.max(0, currentReserved - deduction);
 
               await getServiceSupabase().from('profiles').update({
                 credits: nextCredits,
                 reserved_credits: nextReserved,
-                total_documentaries_created: (user.totalDocumentariesCreated || 0) + 1,
+                total_documentaries_created: (user.totalDocumentariesCreated || 0) + (alreadySettled ? 0 : 1),
                 updated_at: new Date().toISOString(),
               }).eq('id', job.userId);
 
-              const styleName = job.contentStyle === 'kids' ? 'Kids Video' : 'Documentary';
-              const actionLabel = isRerender ? 'Re-rendered' : 'Created';
-              const description = `${actionLabel} ${styleName}: "${job.topic || 'Untitled'}" (${job.durationMinutes || 1} min)`;
+              if (!alreadySettled && user.role !== 'admin') {
+                const styleName = job.contentStyle === 'kids' ? 'Kids Video' : 'Documentary';
+                const actionLabel = isRerender ? 'Re-rendered' : 'Created';
+                const description = `${actionLabel} ${styleName}: "${job.topic || 'Untitled'}" (${job.durationMinutes || 1} min)`;
 
-              try {
-                await this.recordCreditLedger({
-                  userId: job.userId,
-                  amount: user.role === 'admin' ? 0 : -deduction,
-                  balanceAfter: nextCredits,
-                  type: 'generation',
-                  description,
-                  referenceId: jobId,
-                });
-              } catch (ledgerErr) {
-                console.error('[settleJobCredits] Failed to record credit ledger entry:', ledgerErr);
+                try {
+                  await this.recordCreditLedger({
+                    userId: job.userId,
+                    amount: -deduction,
+                    balanceAfter: nextCredits,
+                    type: 'generation',
+                    description,
+                    referenceId: jobId,
+                  });
+                } catch (ledgerErr) {
+                  console.error('[settleJobCredits] Failed to record credit ledger entry:', ledgerErr);
+                }
               }
+
+              // Update the stored job object with settled status
+              job.creditCost = deduction;
+              job.creditStatus = 'charged';
+              job.creditsReserved = 0;
+              job.creditsConsumed = deduction;
+              job.billing = {
+                enabled: true,
+                policyVersion: 1,
+                status: 'settled',
+                totalCredits: deduction,
+                consumedCredits: deduction,
+                reservedCredits: 0,
+                allocations: allocateCreditsByStage(deduction),
+                sceneCount: job.scenes?.length || 10,
+                settledAt: new Date().toISOString(),
+              };
+              await StorageManager.saveJob(job);
             }
           }
         } catch (innerErr) {
@@ -430,8 +562,8 @@ export class DbManager {
         }
         return {
           enabled: true, policyVersion: 1, status: 'settled',
-          totalCredits: 0, consumedCredits: 0, reservedCredits: 0,
-          allocations: { script: 0, images: 0, narration: 0, video: 0 }, sceneCount: 10,
+          totalCredits: settledAmount, consumedCredits: settledAmount, reservedCredits: 0,
+          allocations: allocateCreditsByStage(settledAmount), sceneCount: 10,
           settledAt: new Date().toISOString(),
         };
       }

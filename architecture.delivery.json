@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "079e4756-dab9-488c-acbe-13c941fbf95b",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "C:\\Users\\SUDHIR\\Desktop\\New folder (5)\\automation agent\\.archify\\architecture-cinedoc-20261107-124100\\candidate.json",
+  "output": "C:\\Users\\SUDHIR\\Desktop\\New folder (5)\\automation agent\\architecture.html",
+  "specification": {
+    "sha256": "a5c3e3507cf49f9d7abcaea71dddeccc907536ceca67c4a58b9194ab60c7f1c9",
+    "bytes": 9609
+  },
+  "artifact": {
+    "sha256": "2e537afdf2d00a9564c0c6de9b1c60cf4b6b564316412e1ddf928bccaea51b44",
+    "bytes": 881672
+  }
+}

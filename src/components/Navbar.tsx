@@ -12,6 +12,7 @@ import {
   ReceiptText,
   Shield,
 } from 'lucide-react';
+import { Logo } from '@/components/Logo';
 import { SafeUser } from '@/lib/types';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
@@ -41,9 +42,7 @@ export function Navbar({
     <header className="app-header sticky top-0 z-40 px-4 sm:px-6">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3">
         <Link href="/" className="flex min-w-0 items-center gap-3" aria-label="KinesisFlow home">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[var(--app-text)] text-[var(--app-surface)]">
-            <Clapperboard className="h-5 w-5" aria-hidden="true" />
-          </span>
+          <Logo size={36} />
           <span className="min-w-0">
             <span className="block truncate text-base font-extrabold tracking-[-0.03em] text-primary">KinesisFlow</span>
             <span className="hidden text-[11px] font-medium text-secondary sm:block">AI-assisted video workspace</span>

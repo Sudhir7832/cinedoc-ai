@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { DocumentaryJob } from './types';
+import { DocumentaryJob, JobBillingSnapshot } from './types';
 import { getServiceSupabase } from './supabase/server';
 import type { Json } from './supabase/database.types';
 import { R2Storage } from './storage/r2';
@@ -186,21 +186,47 @@ export class StorageManager {
     if (error) throw new Error(`Failed to load job ${jobId}: ${error.message}`);
     const job = data?.data as unknown as DocumentaryJob || null;
     if (job?.billing?.enabled) {
-      const { DbManager } = await import('./db');
-      const billing = await DbManager.getJobBilling(job.id);
-      job.billing = billing;
-      job.creditCost = billing.totalCredits;
-      job.creditsConsumed = billing.consumedCredits;
-      job.creditsReserved = billing.reservedCredits;
-      job.creditStatus = billing.totalCredits === 0
-        ? 'not_required'
-        : billing.status === 'settled'
-          ? 'charged'
-          : billing.status === 'released'
-            ? 'released'
-            : billing.consumedCredits > 0
-              ? 'partially_charged'
-              : 'reserved';
+      try {
+        const { data: resRowRaw } = await (getServiceSupabase() as any)
+          .from('job_credit_reservations')
+          .select('*')
+          .eq('job_id', job.id)
+          .maybeSingle();
+
+        const resRow = resRowRaw as Record<string, any> | null;
+        if (resRow) {
+          const billing: JobBillingSnapshot = {
+            enabled: true,
+            policyVersion: 1,
+            status: resRow.status || 'active',
+            totalCredits: Number(resRow.total_credits) || 0,
+            consumedCredits: Number(resRow.consumed_credits) || 0,
+            reservedCredits: Number(resRow.reserved_credits) || 0,
+            allocations: {
+              script: Number(resRow.script_credits) || 0,
+              images: Number(resRow.image_credits) || 0,
+              narration: Number(resRow.narration_credits) || 0,
+              video: Number(resRow.video_credits) || 0,
+            },
+            sceneCount: Number(resRow.scene_count) || 10,
+            settledAt: resRow.settled_at || undefined,
+            releasedAt: resRow.released_at || undefined,
+          };
+          job.billing = billing;
+          job.creditCost = billing.totalCredits;
+          job.creditsConsumed = billing.consumedCredits;
+          job.creditsReserved = billing.reservedCredits;
+          job.creditStatus = billing.totalCredits === 0
+            ? 'not_required'
+            : billing.status === 'settled'
+              ? 'charged'
+              : billing.status === 'released'
+                ? 'released'
+                : billing.consumedCredits > 0
+                  ? 'partially_charged'
+                  : 'reserved';
+        }
+      } catch {}
     }
     return job ? this.normalizeJobMedia(job) : null;
   }

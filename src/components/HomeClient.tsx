@@ -11,6 +11,7 @@ import { TimelineEditorModal } from '@/components/TimelineEditorModal';
 import { AuthModal } from '@/components/AuthModal';
 import { BuyCreditsModal } from '@/components/BuyCreditsModal';
 import { CreditHistoryModal } from '@/components/CreditHistoryModal';
+import { Logo } from '@/components/Logo';
 import { DocumentaryJob, SafeUser } from '@/lib/types';
 
 type ActiveModal = 'create' | 'auth' | 'credits' | 'creditHistory' | 'preview' | 'timeline' | null;
@@ -309,6 +310,7 @@ export function HomeClient() {
       <footer className="border-t border-theme bg-[var(--app-surface)] py-8 px-6 text-xs text-secondary">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
+            <Logo size={24} />
             <span className="font-bold text-primary">KinesisFlow</span>
             <p>© 2026 KinesisFlow product.</p>
           </div>

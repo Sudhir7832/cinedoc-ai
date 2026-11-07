@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="kf-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1c1917"/>
+      <stop offset="100%" stop-color="#0c0a09"/>
+    </linearGradient>
+    <linearGradient id="kf-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde047"/>
+      <stop offset="35%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#ea580c"/>
+    </linearGradient>
+    <linearGradient id="kf-accent" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ea580c"/>
+      <stop offset="100%" stop-color="#f43f5e"/>
+    </linearGradient>
+    <linearGradient id="kf-glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#ea580c" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="kf-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <!-- Background Squircle Container -->
+  <rect x="24" y="24" width="464" height="464" rx="120" fill="url(#kf-bg)"/>
+  <rect x="24" y="24" width="464" height="464" rx="120" stroke="url(#kf-gold)" stroke-width="6" stroke-opacity="0.3"/>
+  
+  <!-- Subtle Internal Radial Glow -->
+  <circle cx="256" cy="256" r="180" fill="url(#kf-glow)"/>
+
+  <!-- KinesisFlow Emblem -->
+  <!-- Left Pillar: Film Strip / Timeline Spine -->
+  <rect x="116" y="116" width="68" height="280" rx="22" fill="url(#kf-gold)" filter="url(#kf-shadow)"/>
+  <!-- Film Sprocket Accents on Vertical Bar -->
+  <rect x="136" y="148" width="28" height="18" rx="6" fill="#0c0a09" fill-opacity="0.75"/>
+  <rect x="136" y="247" width="28" height="18" rx="6" fill="#0c0a09" fill-opacity="0.75"/>
+  <rect x="136" y="346" width="28" height="18" rx="6" fill="#0c0a09" fill-opacity="0.75"/>
+
+  <!-- Top-Right Diagonal: Dynamic Forward Flow Ribbon -->
+  <path d="M216 232 L340 120 C354 108 376 114 382 132 L388 152 C392 164 388 178 376 188 L284 274 Z" fill="url(#kf-gold)" filter="url(#kf-shadow)"/>
+
+  <!-- Bottom-Right Diagonal: Kinetic Play-Head Flow Ribbon -->
+  <path d="M248 262 L372 374 C384 384 382 404 368 412 L348 420 C334 426 318 420 308 410 L216 314 Z" fill="url(#kf-accent)" filter="url(#kf-shadow)"/>
+
+  <!-- Center Focal Spark: Cinematic Aperture Diamond -->
+  <polygon points="256,228 284,256 256,284 228,256" fill="#ffffff" fill-opacity="0.95"/>
+</svg>
+

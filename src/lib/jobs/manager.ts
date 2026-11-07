@@ -18,11 +18,18 @@ export class JobManager {
   private static cancelRequests = new Set<string>();
 
   private static applyBilling(job: DocumentaryJob, billing: JobBillingSnapshot): void {
+    if (!billing) return;
+    // Don't let an empty 0-credit fallback overwrite an already established positive creditCost on an active job
+    if (billing.totalCredits === 0 && job.creditCost && job.creditCost > 0 && billing.status !== 'settled') {
+      return;
+    }
     job.billing = billing;
-    job.creditCost = billing.totalCredits;
+    if (billing.totalCredits > 0 || !job.creditCost) {
+      job.creditCost = billing.totalCredits;
+    }
     job.creditsConsumed = billing.consumedCredits;
     job.creditsReserved = billing.reservedCredits;
-    job.creditStatus = billing.totalCredits === 0
+    job.creditStatus = (job.creditCost || 0) === 0
       ? 'not_required'
       : billing.status === 'settled'
         ? 'charged'

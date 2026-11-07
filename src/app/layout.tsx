@@ -3,6 +3,7 @@ import { Inter, Newsreader } from 'next/font/google';
 import Script from 'next/script';
 import './globals.css';
 import { AuthProviderWrapper } from '@/components/AuthProviderWrapper';
+import { CookieConsent } from '@/components/CookieConsent';
 import { assertLaunchConfiguration, getSiteUrl } from '@/lib/brand';
 
 const inter = Inter({
@@ -39,6 +40,15 @@ export const metadata: Metadata = {
     description: 'Create documentary-style and Kids & Family videos in one guided workflow.',
     images: ['/opengraph-image'],
   },
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
 };
 
 export const viewport: Viewport = {
@@ -65,7 +75,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${inter.variable} ${newsreader.variable}`} suppressHydrationWarning>
       <body className="min-h-full">
         <Script id="kinesisflow-theme" strategy="beforeInteractive">{themeScript}</Script>
-        <AuthProviderWrapper>{children}</AuthProviderWrapper>
+        <AuthProviderWrapper>
+          {children}
+          <CookieConsent />
+        </AuthProviderWrapper>
       </body>
     </html>
   );
