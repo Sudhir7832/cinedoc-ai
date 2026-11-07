@@ -16,7 +16,8 @@ import {
   ArrowLeft,
   Volume2,
   Upload,
-  Film
+  Film,
+  Mail
 } from 'lucide-react';
 import { DocumentaryJob } from '@/lib/types';
 import { TimelineEditorModal } from '@/components/TimelineEditorModal';
@@ -51,6 +52,16 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
   const [selectedThumbnailUrl, setSelectedThumbnailUrl] = useState<string | null>(null);
   const [isUpdatingThumb, setIsUpdatingThumb] = useState(false);
   const [thumbnailStatusMsg, setThumbnailStatusMsg] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => {
+        if (data?.user?.email) setUserEmail(data.user.email);
+      })
+      .catch(() => {});
+  }, []);
 
   const thumbnailCandidates = React.useMemo(() => {
     const list: string[] = [];
@@ -311,6 +322,30 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
             style={{ width: `${Math.max(job.progress.percent, 3)}%` }}
           ></div>
         </div>
+
+        {/* Sit Back & Relax Email Notice */}
+        {!isCompleted && !isFailed && (
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3.5 animate-in fade-in">
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-lg">
+                ☕
+              </span>
+              <div>
+                <p className="text-xs font-bold text-amber-200 flex items-center gap-1.5">
+                  Sit back and relax!
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
+                </p>
+                <p className="mt-0.5 text-[11px] text-gray-300">
+                  Your 1080p video is being generated in the background. You will receive an email{userEmail ? <> at <strong className="text-white">{userEmail}</strong></> : ''} when your video is complete.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 self-start sm:self-auto shrink-0 rounded-full border border-amber-500/30 bg-black/40 px-3 py-1 text-[11px] font-medium text-amber-300">
+              <Mail className="h-3.5 w-3.5 text-amber-400" />
+              <span>Email notification enabled</span>
+            </div>
+          </div>
+        )}
 
         {/* 6 Stages Timeline */}
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3">

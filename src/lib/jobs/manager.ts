@@ -366,6 +366,17 @@ export class JobManager {
         : 'Documentary completed successfully!';
       await StorageManager.saveJob(job);
 
+      if (job.userId) {
+        try {
+          const { EmailService } = await import('../email/resend');
+          void EmailService.sendVideoCompletedEmail(job).catch(err => {
+            console.warn(`[JobManager] Background email sending failed for ${id}:`, err);
+          });
+        } catch (emailErr) {
+          console.warn(`[JobManager] Could not load EmailService for ${id}:`, emailErr);
+        }
+      }
+
       return job;
     } catch (err: unknown) {
       console.error(`[JobManager] Job ${id} failed:`, err);
@@ -503,6 +514,18 @@ export class JobManager {
       job.progress.percent = 100;
       job.progress.stepLabel = 'Video re-rendered successfully!';
       await StorageManager.saveJob(job);
+
+      if (job.userId) {
+        try {
+          const { EmailService } = await import('../email/resend');
+          void EmailService.sendVideoCompletedEmail(job, true).catch(err => {
+            console.warn(`[JobManager] Background re-render email sending failed for ${id}:`, err);
+          });
+        } catch (emailErr) {
+          console.warn(`[JobManager] Could not load EmailService for ${id}:`, emailErr);
+        }
+      }
+
       return job;
     } catch (err: unknown) {
       console.error(`[JobManager] Re-render error for ${id}:`, err);
