@@ -367,11 +367,34 @@ export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpe
                 {Boolean(user?.reservedCredits) && <span className="ml-1 font-medium text-secondary">· {user?.reservedCredits} reserved</span>}
               </p>
             </div>
-            <div className="flex items-center gap-2 text-xs text-secondary font-medium">
-              <span>Prices displayed in</span>
-              <span className="font-extrabold text-primary brand-soft px-2 py-0.5 rounded-md">
-                {currency === 'USD' ? 'USD ($)' : 'INR (₹)'}
-              </span>
+            <div className="flex items-center gap-2 text-xs">
+              <span className="font-semibold text-secondary">Currency:</span>
+              <div className="inline-flex rounded-lg border border-theme bg-[var(--app-surface)] p-0.5 shadow-sm" aria-label="Quick currency toggle">
+                <button
+                  type="button"
+                  onClick={() => handleCurrencySelect('USD')}
+                  className={`rounded-md px-2.5 py-1 text-xs font-black transition-all ${
+                    currency === 'USD'
+                      ? 'bg-[var(--app-brand)] text-white shadow-sm'
+                      : 'text-secondary hover:text-primary'
+                  }`}
+                  aria-pressed={currency === 'USD'}
+                >
+                  USD ($)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleCurrencySelect('INR')}
+                  className={`rounded-md px-2.5 py-1 text-xs font-black transition-all ${
+                    currency === 'INR'
+                      ? 'bg-[var(--app-brand)] text-white shadow-sm'
+                      : 'text-secondary hover:text-primary'
+                  }`}
+                  aria-pressed={currency === 'INR'}
+                >
+                  INR (₹)
+                </button>
+              </div>
             </div>
           </div>
 
