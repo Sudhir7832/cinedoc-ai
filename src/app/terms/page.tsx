@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowLeft, Clapperboard, FileText } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { LEGAL_OPERATOR } from '@/lib/brand';
 
 const description = 'Terms governing use of KinesisFlow, AI-assisted video generation, user responsibilities, credits, providers, and service limitations.';
 
@@ -71,10 +70,6 @@ export default function TermsPage() {
           <p className="mt-2 text-sm text-secondary">Last updated October 29, 2026 · Effective immediately</p>
         </div>
 
-        <div className="mb-4 rounded-2xl border border-[var(--app-warning)] bg-[var(--app-warning-soft)] p-4 text-sm leading-6 text-[var(--app-warning)]">
-          <strong className="block">Release-blocking operator notice</strong>
-          The legal operator is not yet confirmed. Current placeholder: {LEGAL_OPERATOR}. These terms are not launch-ready until verified operator identity, jurisdiction, contact, and dispute provisions are added.
-        </div>
 
         <div className="space-y-4">
           {SECTIONS.map((section, index) => (

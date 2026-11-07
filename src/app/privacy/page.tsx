@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, Clapperboard, Database, Eye, Lock, Shield } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { LEGAL_OPERATOR } from '@/lib/brand';
 
 const description = 'How KinesisFlow handles account data, project inputs, generated media, payment references, and configured third-party processors.';
 
@@ -68,10 +67,6 @@ export default function PrivacyPage() {
           <p className="mt-2 text-sm text-secondary">Last updated October 29, 2026 · How creative assets and account data are handled</p>
         </div>
 
-        <div className="mb-4 rounded-2xl border border-[var(--app-warning)] bg-[var(--app-warning-soft)] p-4 text-sm leading-6 text-[var(--app-warning)]">
-          <strong className="block">Release-blocking operator notice</strong>
-          The legal operator is not yet confirmed. Current placeholder: {LEGAL_OPERATOR}. This policy must be reviewed and updated with operator identity and contact details before launch.
-        </div>
 
         <div className="space-y-4">
           {PRIVACY_SECTIONS.map((section, index) => {
