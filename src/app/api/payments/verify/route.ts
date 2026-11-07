@@ -124,14 +124,49 @@ export async function POST(req: NextRequest) {
       const txId = body.transaction_id;
       if (!settings.dodoApiKey) throw new Error('Dodo Payments API key is not configured');
 
+      const isTestKey = settings.dodoApiKey.startsWith('dodo_test_');
+      const dodoBase = isTestKey || settings.dodoMode === 'test'
+        ? 'https://test.dodopayments.com'
+        : 'https://live.dodopayments.com';
+
       const transactions = await DbManager.getTransactions();
-      const transaction = transactions.find(tx => 
+      let transaction = transactions.find(tx => 
         tx.gateway === 'dodo' && (
           (txId && tx.id === txId) ||
           (sessionId && tx.paymentId === sessionId) ||
           (paymentId && tx.providerPaymentId === paymentId)
         )
       );
+
+      // If transaction not found by direct ID match, but paymentId is provided, query Dodo to get transaction metadata
+      if (!transaction && paymentId) {
+        try {
+          const payRes = await fetch(`${dodoBase}/payments/${encodeURIComponent(paymentId)}`, {
+            headers: { Authorization: `Bearer ${settings.dodoApiKey}` },
+          });
+          if (payRes.ok) {
+            const pData = await payRes.json();
+            const foundTxId = String(pData.metadata?.transaction_id || '');
+            const foundSessionId = String(pData.checkout_session_id || '');
+            if (foundTxId) {
+              transaction = transactions.find(tx => tx.id === foundTxId);
+            }
+            if (!transaction && foundSessionId) {
+              transaction = transactions.find(tx => tx.paymentId === foundSessionId);
+            }
+          }
+        } catch (lookupErr) {
+          console.warn('[Dodo Verify] Dodo payment lookup for transaction ID failed:', lookupErr);
+        }
+      }
+
+      // If still not found, check the user's latest pending dodo transaction
+      if (!transaction) {
+        const userPendingDodo = transactions.find(tx => tx.gateway === 'dodo' && tx.userId === user.id && tx.status === 'pending');
+        if (userPendingDodo) {
+          transaction = userPendingDodo;
+        }
+      }
 
       if (!transaction) {
         return NextResponse.json({ success: false, error: 'Dodo transaction not found.' }, { status: 404 });
@@ -149,7 +184,6 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      const dodoBase = settings.dodoMode === 'live' ? 'https://live.dodopayments.com' : 'https://test.dodopayments.com';
       let verifiedPaymentId = paymentId || transaction.providerPaymentId;
       let paymentConfirmed = false;
 
@@ -162,7 +196,7 @@ export async function POST(req: NextRequest) {
           });
           if (sessionRes.ok) {
             const sData = await sessionRes.json();
-            if (sData.payment_status === 'succeeded' || sData.status === 'succeeded') {
+            if (sData.payment_status === 'succeeded' || sData.status === 'succeeded' || sData.status === 'paid' || sData.status === 'completed') {
               paymentConfirmed = true;
               verifiedPaymentId = sData.payment_id || verifiedPaymentId;
             }
@@ -186,6 +220,28 @@ export async function POST(req: NextRequest) {
           }
         } catch (payErr) {
           console.warn('[Dodo Verify] Payment lookup failed:', payErr);
+        }
+      }
+
+      // 3. Fallback: query recent payments list to match by transaction_id or checkout_session_id
+      if (!paymentConfirmed && transaction.id) {
+        try {
+          const paymentsRes = await fetch(`${dodoBase}/payments?page_size=10`, {
+            headers: { Authorization: `Bearer ${settings.dodoApiKey}` },
+          });
+          if (paymentsRes.ok) {
+            const listData = await paymentsRes.json();
+            const matchedItem = (listData.items || []).find((item: { metadata?: { transaction_id?: string }; checkout_session_id?: string; status?: string; payment_id?: string }) => 
+              (item.metadata?.transaction_id === transaction?.id || (transaction?.paymentId && item.checkout_session_id === transaction.paymentId))
+              && (item.status === 'succeeded' || item.status === 'paid' || item.status === 'completed')
+            );
+            if (matchedItem) {
+              paymentConfirmed = true;
+              verifiedPaymentId = matchedItem.payment_id || verifiedPaymentId;
+            }
+          }
+        } catch (listErr) {
+          console.warn('[Dodo Verify] Payments list lookup fallback failed:', listErr);
         }
       }
 

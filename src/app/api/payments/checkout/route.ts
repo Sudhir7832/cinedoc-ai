@@ -142,7 +142,10 @@ export async function POST(req: NextRequest) {
         userId: user.id, userEmail: user.email, packId: pack.id, packName: pack.name, amount,
         currency: checkoutCurrency, creditsAdded: pack.credits, gateway: 'dodo', status: 'pending', paymentId: `dodo_pending_${Date.now()}`,
       });
-      const endpoint = settings.dodoMode === 'live' ? 'https://live.dodopayments.com/checkouts' : 'https://test.dodopayments.com/checkouts';
+      const isTestKey = settings.dodoApiKey.startsWith('dodo_test_');
+      const endpoint = isTestKey || settings.dodoMode === 'test'
+        ? 'https://test.dodopayments.com/checkouts'
+        : 'https://live.dodopayments.com/checkouts';
       const dodoResponse = await fetch(endpoint, {
         method: 'POST',
         headers: { Authorization: `Bearer ${settings.dodoApiKey}`, 'Content-Type': 'application/json' },

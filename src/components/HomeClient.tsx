@@ -143,32 +143,34 @@ export function HomeClient() {
       window.history.replaceState({}, '', window.location.pathname);
       return;
     }
-    if (payment === 'success' && paymentGateway === 'dodo') {
+    const isDodoSuccess = (payment === 'success' || params.get('status') === 'succeeded') && (paymentGateway === 'dodo' || params.has('tx_id'));
+    if (isDodoSuccess) {
       window.setTimeout(() => setPaymentNotice('Verifying Dodo payment...'), 0);
-      const sessionId = params.get('session_id') || '';
+      const sessionId = params.get('session_id') || params.get('checkout_id') || params.get('checkout_session_id') || '';
       const paymentId = params.get('payment_id') || '';
-      const txId = params.get('tx_id') || '';
+      const txId = params.get('tx_id') || params.get('transaction_id') || '';
+
+      const bodyPayload: Record<string, string> = { gateway: 'dodo' };
+      if (sessionId) bodyPayload.session_id = sessionId;
+      if (paymentId) bodyPayload.payment_id = paymentId;
+      if (txId) bodyPayload.transaction_id = txId;
 
       fetch('/api/payments/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          gateway: 'dodo',
-          session_id: sessionId,
-          payment_id: paymentId,
-          transaction_id: txId,
-        }),
+        body: JSON.stringify(bodyPayload),
       })
-        .then(res => res.json())
-        .then(data => {
+        .then(async res => {
+          const data = await res.json();
           if (data.success) {
             setPaymentNotice(`Payment verified! ${data.creditsAdded || 150} credits added to your account.`);
-            void fetchUser();
+            await fetchUser();
           } else {
             setPaymentNotice(data.error || 'Payment verification failed.');
           }
         })
-        .catch(() => {
+        .catch(err => {
+          console.error('[Verify Dodo error]:', err);
           setPaymentNotice('Could not verify payment. Please check your transaction history.');
         })
         .finally(() => {

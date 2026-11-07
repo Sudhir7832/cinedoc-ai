@@ -84,9 +84,9 @@ export const paymentVerifySchema = z.discriminatedUnion('gateway', [
   }),
   z.strictObject({
     gateway: z.literal('dodo'),
-    session_id: z.string().trim().min(1).max(200).optional(),
-    payment_id: z.string().trim().min(1).max(200).optional(),
-    transaction_id: z.string().trim().min(1).max(200).optional(),
+    session_id: z.string().trim().max(200).optional().nullable().transform(v => v || undefined),
+    payment_id: z.string().trim().max(200).optional().nullable().transform(v => v || undefined),
+    transaction_id: z.string().trim().max(200).optional().nullable().transform(v => v || undefined),
   }),
 ]);
 
@@ -124,9 +124,11 @@ export const ttsPreviewSchema = z.strictObject({
 });
 
 export const dodoWebhookSchema = z.strictObject({
-  type: z.enum(['payment.succeeded', 'payment.failed', 'payment.cancelled']).optional(),
+  type: z.string().trim().max(100).optional(),
   data: z.strictObject({
     payment_id: z.string().max(200).optional(),
+    checkout_session_id: z.string().max(200).optional(),
+    status: z.string().max(100).optional(),
     metadata: z.record(z.string().max(100), z.union([z.string().max(500), z.number().finite()])).optional(),
   }).optional(),
 });

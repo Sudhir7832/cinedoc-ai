@@ -595,13 +595,27 @@ export class DbManager {
   }
 
   public static async claimPaymentWebhook(gateway: 'dodo' | 'stripe' | 'razorpay', eventId: string): Promise<boolean> {
-    const client = getServiceSupabase() as unknown as RawRpcClient;
-    const { data, error } = await client.rpc<boolean>('claim_payment_webhook_v1', {
-      p_gateway: gateway,
-      p_event_id: eventId,
-    });
-    throwIfError(error);
-    return data === true;
+    try {
+      const client = getServiceSupabase() as unknown as RawRpcClient;
+      const { data, error } = await client.rpc<boolean>('claim_payment_webhook_v1', {
+        p_gateway: gateway,
+        p_event_id: eventId,
+      });
+      if (error) {
+        const msg = error.message || '';
+        if (msg.includes('schema cache') || (error as { code?: string })?.code === 'PGRST202' || msg.includes('not find the function')) {
+          return true;
+        }
+        throwIfError(error);
+      }
+      return data === true;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('schema cache') || msg.includes('PGRST202') || msg.includes('not find the function')) {
+        return true;
+      }
+      throw err;
+    }
   }
 
   public static async getSettings(): Promise<SaasSettings> {
