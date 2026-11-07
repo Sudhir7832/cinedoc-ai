@@ -10,21 +10,26 @@ import {
   ChevronRight,
   Clock3,
   Download,
+  FileText,
   Film,
   Images,
+  Languages,
   Layers3,
   Loader2,
   Mic2,
+  Music2,
   Play,
   Plus,
-  Trash2,
-  Video,
-  WandSparkles,
-  Languages,
-  Music2,
-  Youtube,
-  TrendingUp,
+  Radio,
+  ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
+  Trash2,
+  TrendingUp,
+  Video,
+  Volume2,
+  WandSparkles,
+  Youtube,
 } from 'lucide-react';
 import { DocumentaryJob, SafeUser } from '@/lib/types';
 import { SampleShowcase } from '@/components/SampleShowcase';
@@ -77,6 +82,7 @@ export function Dashboard({
   const [promptInput, setPromptInput] = useState('');
   const [masterVideo, setMasterVideo] = useState<string>('');
   const [masterPoster, setMasterPoster] = useState<string>('');
+  const [pipelineStage, setPipelineStage] = useState<'script' | 'thumbnails' | 'audio' | 'timeline' | 'master'>('script');
 
   useEffect(() => {
     fetch('/api/config')
@@ -420,30 +426,26 @@ export function Dashboard({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-              <div className="surface-card p-6">
-                <Images className="h-5 w-5 brand-text" aria-hidden="true" />
-                <h4 className="mt-4 text-base font-bold text-primary">Dual 16:9 YouTube Thumbnails</h4>
-                <p className="mt-2 text-xs leading-5 text-secondary">
-                  Every video automatically generates 2 contrasting YouTube-native thumbnails: Hook Hero (focal protagonist) and Climax Peak (dramatic high-tension reveal). Perfect for YouTube Studio A/B test experiments.
+            <div className="surface-soft border border-theme p-5 sm:p-6 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold text-primary flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 brand-text" aria-hidden="true" />
+                  Full Studio Pipeline Included With Every Niche Template
+                </p>
+                <p className="mt-1 text-xs text-secondary max-w-2xl">
+                  Every project automatically includes 10-beat retention scriptwriting, dual 16:9 YouTube Studio A/B thumbnails, 10 cuts/min Ken Burns camera motion, Sarvam AI Hindi or English narration, and a 1080p master MP4.
                 </p>
               </div>
-
-              <div className="surface-card p-6">
-                <Camera className="h-5 w-5 brand-text" aria-hidden="true" />
-                <h4 className="mt-4 text-base font-bold text-primary">55%+ Audience Retention Motion</h4>
-                <p className="mt-2 text-xs leading-5 text-secondary">
-                  10 visual frames per minute paired with gentle Ken Burns motion (cinematic slow zoom, subtle pan, and soft crossfades) keeps YouTube viewers engaged past the critical 30-second retention cliff.
-                </p>
-              </div>
-
-              <div className="surface-card p-6">
-                <Mic2 className="h-5 w-5 brand-text" aria-hidden="true" />
-                <h4 className="mt-4 text-base font-bold text-primary">Authentic Neural Narration &amp; Subtitles</h4>
-                <p className="mt-2 text-xs leading-5 text-secondary">
-                  Human-sounding narration in English and conversational Hindi with auto-timed burned-in subtitles. Background music ducks under speech so every word cuts through clearly on mobile speakers.
-                </p>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('studio-pipeline-showcase');
+                  el?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="btn-secondary !text-xs shrink-0 self-start md:self-auto"
+              >
+                Explore Studio Pipeline <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
             </div>
           </div>
         )}
@@ -470,16 +472,19 @@ export function Dashboard({
 
       </section>
 
-      {/* Dedicated Faceless YouTube Features Section - Unslop Bento Grid */}
-      <section className="surface-card border-t-2 border-t-[var(--app-brand)] p-6 sm:p-9 lg:p-11" aria-label="Faceless YouTube creator features">
+      {/* Bespoke Production Studio Pipeline Showcase - Replaces Generic Bento Cards */}
+      <section id="studio-pipeline-showcase" className="surface-card border-t-2 border-t-[var(--app-brand)] p-6 sm:p-9 lg:p-11" aria-label="Faceless YouTube creator studio pipeline">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <div className="max-w-2xl">
-            <p className="eyebrow mb-2">Built for Faceless YouTube Creators</p>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="h-2 w-2 rounded-full bg-[var(--app-brand)] animate-pulse" />
+              <p className="eyebrow !mb-0">The Automated Studio Pipeline</p>
+            </div>
             <h2 className="editorial-title text-2xl text-primary sm:text-3xl lg:text-4xl">
-              Everything your channel needs to publish, rank, and monetize.
+              One prompt. Five automated production stages.
             </h2>
             <p className="mt-3 text-sm leading-6 text-secondary">
-              Stop juggling 5 different tools for scriptwriting, image generation, voiceover, captioning, and video editing. KinesisFlow unites the entire YouTube automation stack into one unified production workspace.
+              Stop juggling ChatGPT, Midjourney, ElevenLabs, Premiere, and Photoshop. KinesisFlow unites the entire YouTube production stack into one synchronized, high-retention pipeline.
             </p>
           </div>
           <button type="button" onClick={() => onNewJob()} className="btn-primary shrink-0 self-start md:self-auto">
@@ -488,189 +493,590 @@ export function Dashboard({
           </button>
         </div>
 
-        {/* Asymmetrical Editorial Bento Grid */}
-        <div className="mt-8 grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {/* Card 1: 2-Column Hero Anchor */}
-          <div className="flex flex-col justify-between rounded-2xl border border-theme bg-[var(--app-surface-soft)]/50 p-6 sm:p-7 transition-all hover:border-[var(--app-brand)]/40 hover:bg-[var(--app-surface-soft)] md:col-span-2">
-            <div>
-              <div className="flex items-center justify-between gap-3">
-                <span className="font-mono text-[10px] font-bold tracking-widest text-secondary uppercase">
-                  01 · Narrative Architecture
-                </span>
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg brand-soft brand-text">
-                  <TrendingUp className="h-4 w-4" aria-hidden="true" />
-                </span>
-              </div>
-
-              <h3 className="mt-4 text-lg sm:text-xl font-bold tracking-tight text-primary">
-                High-RPM Niche Scriptwriting Engine
-              </h3>
-              <p className="mt-2 text-xs sm:text-sm leading-relaxed text-secondary max-w-2xl">
-                Researched 10-scene narrative structures calibrated for high-monetization YouTube niches. Uses curiosity hooks, pattern interrupts, and tension escalation to push average viewer retention above 55%.
-              </p>
-            </div>
-
-            <div className="mt-6 border-t border-theme/60 pt-4 flex flex-wrap items-center gap-2">
-              <span className="rounded-md border border-theme bg-[var(--app-surface)] px-2.5 py-1 text-[11px] font-semibold text-primary">
-                Finance &amp; Investing ($18–$35 RPM)
-              </span>
-              <span className="rounded-md border border-theme bg-[var(--app-surface)] px-2.5 py-1 text-[11px] font-semibold text-primary">
-                True Crime &amp; Mystery
-              </span>
-              <span className="rounded-md border border-theme bg-[var(--app-surface)] px-2.5 py-1 text-[11px] font-semibold text-primary">
-                History &amp; Documentary
-              </span>
-              <span className="rounded-md border border-theme bg-[var(--app-surface)] px-2.5 py-1 text-[11px] font-semibold text-primary">
-                Deep Tech &amp; AI
-              </span>
-              <span className="ml-auto text-[11px] font-bold brand-text">
-                55%+ Target Retention
-              </span>
-            </div>
+        {/* Studio Stage Selector Tabs */}
+        <div className="mt-8 border-b border-theme/80 pb-3">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+            {[
+              { id: 'script' as const, num: '01', title: 'Script & Hooks', desc: 'Retention Pacing' },
+              { id: 'thumbnails' as const, num: '02', title: 'Dual Thumbnails', desc: 'A/B CTR Testing' },
+              { id: 'audio' as const, num: '03', title: 'Neural Audio & BGM', desc: 'Sarvam AI & Ducking' },
+              { id: 'timeline' as const, num: '04', title: 'Cinematic Motion', desc: '10 Cuts/Min & NLE' },
+              { id: 'master' as const, num: '05', title: '1080p Master MP4', desc: 'AdSense Clearance' },
+            ].map((stage) => {
+              const active = pipelineStage === stage.id;
+              return (
+                <button
+                  key={stage.id}
+                  type="button"
+                  onClick={() => setPipelineStage(stage.id)}
+                  className={`flex shrink-0 items-center gap-2.5 rounded-lg border px-3.5 py-2.5 text-left transition-all ${
+                    active
+                      ? 'border-[var(--app-brand)] bg-[var(--app-surface-soft)] text-primary shadow-sm'
+                      : 'border-theme/60 bg-[var(--app-surface)] text-secondary hover:border-theme hover:bg-[var(--app-surface-soft)]/60 hover:text-primary'
+                  }`}
+                  aria-pressed={active}
+                >
+                  <span className={`font-mono text-[11px] font-bold ${active ? 'brand-text' : 'text-secondary/70'}`}>
+                    {stage.num}
+                  </span>
+                  <div>
+                    <p className="text-xs font-bold leading-none">{stage.title}</p>
+                    <p className="mt-0.5 text-[10px] text-secondary">{stage.desc}</p>
+                  </div>
+                </button>
+              );
+            })}
           </div>
+        </div>
 
-          {/* Card 2: Dual A/B Thumbnails */}
-          <div className="flex flex-col justify-between rounded-2xl border border-theme bg-[var(--app-surface-soft)]/50 p-6 sm:p-7 transition-all hover:border-[var(--app-brand)]/40 hover:bg-[var(--app-surface-soft)]">
-            <div>
-              <div className="flex items-center justify-between gap-3">
-                <span className="font-mono text-[10px] font-bold tracking-widest text-secondary uppercase">
-                  02 · Packaging &amp; CTR
-                </span>
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg brand-soft brand-text">
-                  <Images className="h-4 w-4" aria-hidden="true" />
-                </span>
-              </div>
-
-              <h3 className="mt-4 text-base sm:text-lg font-bold tracking-tight text-primary">
-                Dual 16:9 High-CTR Thumbnails
-              </h3>
-              <p className="mt-2 text-xs leading-relaxed text-secondary">
-                Two contrasting YouTube-native thumbnails (Hook Hero vs Climax Peak) formatted at 16:9 with saturated lighting and high-contrast subjects ready for YouTube Studio A/B testing.
-              </p>
-            </div>
-
-            <div className="mt-6 border-t border-theme/60 pt-4 flex items-center justify-between text-[11px] font-semibold text-secondary">
-              <span className="rounded bg-[var(--app-surface)] px-2 py-0.5 border border-theme text-primary">A/B Testing Ready</span>
-              <span className="font-mono text-[10px] text-secondary">16:9 Aspect Ratio</span>
-            </div>
-          </div>
-
-          {/* Card 3: Cinematic Motion */}
-          <div className="flex flex-col justify-between rounded-2xl border border-theme bg-[var(--app-surface-soft)]/50 p-6 sm:p-7 transition-all hover:border-[var(--app-brand)]/40 hover:bg-[var(--app-surface-soft)]">
-            <div>
-              <div className="flex items-center justify-between gap-3">
-                <span className="font-mono text-[10px] font-bold tracking-widest text-secondary uppercase">
-                  03 · Cinematography
-                </span>
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg brand-soft brand-text">
-                  <Camera className="h-4 w-4" aria-hidden="true" />
-                </span>
-              </div>
-
-              <h3 className="mt-4 text-base sm:text-lg font-bold tracking-tight text-primary">
-                Cinematic Ken Burns Motion
-              </h3>
-              <p className="mt-2 text-xs leading-relaxed text-secondary">
-                Every image is enriched with smooth pan, zoom, and crossfade movement. Ten visual frames per minute prevent viewer drop-off and push average retention above 55%.
-              </p>
-            </div>
-
-            <div className="mt-6 border-t border-theme/60 pt-4 flex items-center justify-between text-[11px] font-semibold text-secondary">
-              <span className="rounded bg-[var(--app-surface)] px-2 py-0.5 border border-theme text-primary">10 visual cuts/min</span>
-              <span className="font-mono text-[10px] text-secondary">Zero Stillness</span>
-            </div>
-          </div>
-
-          {/* Card 4: Neural Voiceover & Subtitles */}
-          <div className="flex flex-col justify-between rounded-2xl border border-theme bg-[var(--app-surface-soft)]/50 p-6 sm:p-7 transition-all hover:border-[var(--app-brand)]/40 hover:bg-[var(--app-surface-soft)]">
-            <div>
-              <div className="flex items-center justify-between gap-3">
-                <span className="font-mono text-[10px] font-bold tracking-widest text-secondary uppercase">
-                  04 · Audio &amp; Captions
-                </span>
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg brand-soft brand-text">
-                  <Mic2 className="h-4 w-4" aria-hidden="true" />
-                </span>
-              </div>
-
-              <h3 className="mt-4 text-base sm:text-lg font-bold tracking-tight text-primary">
-                Neural Speech &amp; Timed Subtitles
-              </h3>
-              <p className="mt-2 text-xs leading-relaxed text-secondary">
-                Human-like neural narration in English and conversational Hindi (via Sarvam AI), with burned-in animated subtitles and ducked ambient background music.
-              </p>
-            </div>
-
-            <div className="mt-6 border-t border-theme/60 pt-4 flex items-center justify-between text-[11px] font-semibold text-secondary">
-              <span className="rounded bg-[var(--app-surface)] px-2 py-0.5 border border-theme text-primary">English &amp; Sarvam AI Hindi</span>
-              <span className="font-mono text-[10px] text-secondary">Ducked BGM</span>
-            </div>
-          </div>
-
-          {/* Card 5: Script Review & Timeline Editor */}
-          <div className="flex flex-col justify-between rounded-2xl border border-theme bg-[var(--app-surface-soft)]/50 p-6 sm:p-7 transition-all hover:border-[var(--app-brand)]/40 hover:bg-[var(--app-surface-soft)]">
-            <div>
-              <div className="flex items-center justify-between gap-3">
-                <span className="font-mono text-[10px] font-bold tracking-widest text-secondary uppercase">
-                  05 · Pre-Render Control
-                </span>
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg brand-soft brand-text">
-                  <Layers3 className="h-4 w-4" aria-hidden="true" />
-                </span>
-              </div>
-
-              <h3 className="mt-4 text-base sm:text-lg font-bold tracking-tight text-primary">
-                Script Review &amp; Timeline Editor
-              </h3>
-              <p className="mt-2 text-xs leading-relaxed text-secondary">
-                Review and edit scripts before rendering starts. Re-generate any scene image, re-record audio, or adjust pacing without re-running the entire project or wasting credits.
-              </p>
-            </div>
-
-            <div className="mt-6 border-t border-theme/60 pt-4 flex items-center justify-between text-[11px] font-semibold text-secondary">
-              <span className="rounded bg-[var(--app-surface)] px-2 py-0.5 border border-theme text-primary">Pre-Flight Review</span>
-              <span className="font-mono text-[10px] text-secondary">Zero Credit Loss</span>
-            </div>
-          </div>
-
-          {/* Card 6: 3-Column Full Width Footer Card */}
-          <div className="flex flex-col justify-between rounded-2xl border border-theme bg-[var(--app-surface-soft)]/50 p-6 sm:p-7 transition-all hover:border-[var(--app-brand)]/40 hover:bg-[var(--app-surface-soft)] md:col-span-2 lg:col-span-3">
-            <div className="grid gap-5 lg:grid-cols-[1.5fr_1fr] lg:items-center">
+        {/* Active Stage Interactive Workbench */}
+        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1.18fr] lg:gap-8 items-start">
+          {/* Stage 1: Script & Hooks */}
+          {pipelineStage === 'script' && (
+            <>
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-[10px] font-bold tracking-widest text-secondary uppercase">
-                    06 · Production Master &amp; Ownership
+                <span className="font-mono text-[11px] font-bold tracking-widest text-[var(--app-brand)] uppercase">
+                  Stage 01 · Narrative Architecture
+                </span>
+                <h3 className="editorial-title mt-2 text-2xl sm:text-3xl text-primary">
+                  Scripts engineered for the critical first 30 seconds.
+                </h3>
+                <p className="mt-3 text-xs sm:text-sm leading-relaxed text-secondary">
+                  Most faceless channels fail because standard AI produces flat, lifeless encyclopedic summaries. KinesisFlow structures every documentary into 10 dramatic narrative beats—opening with an irresistible curiosity hook, pacing tension with pattern interrupts, and leading to an earned climax.
+                </p>
+
+                <div className="mt-5 space-y-3">
+                  <div className="flex items-start gap-2.5 text-xs text-secondary">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
+                    <span><strong className="text-primary font-semibold">High-RPM Calibration:</strong> Researched storytelling structures for Finance ($15–$35 RPM), True Crime, Deep Tech, and Ancient History.</span>
+                  </div>
+                  <div className="flex items-start gap-2.5 text-xs text-secondary">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
+                    <span><strong className="text-primary font-semibold">10-Beat Story Arc:</strong> Hook &rarr; Inciting Incident &rarr; Tension Escalation &rarr; Evidence &rarr; Climax Resolution.</span>
+                  </div>
+                  <div className="flex items-start gap-2.5 text-xs text-secondary">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
+                    <span><strong className="text-primary font-semibold">Full Pre-Flight Review:</strong> Edit dialogue, adjust pacing, and refine scene cues before rendering a single frame.</span>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex flex-wrap items-center gap-3">
+                  <button type="button" onClick={() => onNewJob()} className="btn-primary !text-xs">
+                    Try Script Engine <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                  <button type="button" onClick={() => setPipelineStage('thumbnails')} className="btn-secondary !text-xs">
+                    Next: Dual Thumbnails &rarr;
+                  </button>
+                </div>
+              </div>
+
+              {/* Realistic Screenplay Teleprompter Mockup */}
+              <div className="overflow-hidden rounded-xl border border-theme bg-[#121316] text-neutral-100 shadow-xl">
+                <div className="flex items-center justify-between border-b border-neutral-800 bg-[#191a1f] px-4 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-amber-500/80" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
+                    <span className="ml-2 font-mono text-[11px] text-neutral-400">screenplay_scene_01.fdx</span>
+                  </div>
+                  <span className="rounded bg-emerald-500/20 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-400">
+                    Hook Rating: 96 / 100
                   </span>
                 </div>
-                <h3 className="mt-3 text-lg sm:text-xl font-bold tracking-tight text-primary">
-                  1080p Master MP4 Ready to Upload &amp; Monetize
+
+                <div className="p-4 sm:p-5 font-mono text-xs space-y-3 bg-[#111215]">
+                  <div className="flex items-center justify-between text-[10px] text-neutral-500 border-b border-neutral-800/80 pb-2">
+                    <span>SCENE 01 / 10 · TEASER HOOK</span>
+                    <span className="text-amber-400 font-bold">TIMECODE: 00:00 - 00:08</span>
+                  </div>
+
+                  <p className="text-neutral-400 text-[11px]">
+                    <span className="text-neutral-500">SLUG:</span> INT. ANTWERP VAULT - NIGHT [4K CINEMATIC]
+                  </p>
+                  <p className="text-neutral-400 text-[11px]">
+                    <span className="text-neutral-500">CAMERA:</span> SLOW PUSH-IN ON TITANIUM TUMBLER SYSTEM (24 FPS)
+                  </p>
+
+                  <div className="rounded-lg border border-neutral-800 bg-[#17181e] p-3 text-neutral-200 leading-relaxed font-sans text-xs">
+                    <p className="text-[10px] font-bold text-amber-400 font-mono mb-1">NARRATION (DEEP DOCUMENTARY):</p>
+                    &ldquo;On December 24, 1995, three men walked into the world&rsquo;s most impenetrable underground vault. They walked out four hours later with $160 million—and didn&rsquo;t trigger a single alarm.&rdquo;
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 text-[10px] text-neutral-400 border-t border-neutral-800/80">
+                    <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Pattern interrupt at 00:05
+                    </span>
+                    <span className="font-mono text-neutral-400">Target Retention: 58%+</span>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Stage 2: Dual Thumbnails */}
+          {pipelineStage === 'thumbnails' && (
+            <>
+              <div>
+                <span className="font-mono text-[11px] font-bold tracking-widest text-[var(--app-brand)] uppercase">
+                  Stage 02 · Packaging &amp; CTR
+                </span>
+                <h3 className="editorial-title mt-2 text-2xl sm:text-3xl text-primary">
+                  Two native 16:9 thumbnails with every render.
                 </h3>
-                <p className="mt-2 text-xs sm:text-sm leading-relaxed text-secondary max-w-xl">
-                  Export pristine 1080p MP4 files formatted for YouTube long-form (16:9) or vertical shorts (9:16). Complete commercial ownership for AdSense monetization, sponsorships, and client contracts.
+                <p className="mt-3 text-xs sm:text-sm leading-relaxed text-secondary">
+                  A great documentary with zero clicks is a ghost video. Instead of generating a generic screenshot, KinesisFlow renders two contrasting 16:9 thumbnail concepts ready for YouTube Studio&rsquo;s &ldquo;Test &amp; Compare&rdquo; feature. You never launch blind.
                 </p>
+
+                <div className="mt-5 space-y-3">
+                  <div className="flex items-start gap-2.5 text-xs text-secondary">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
+                    <span><strong className="text-primary font-semibold">Variant A (Hook Hero):</strong> Protagonist-centric focal shot with volumetric rim lighting.</span>
+                  </div>
+                  <div className="flex items-start gap-2.5 text-xs text-secondary">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
+                    <span><strong className="text-primary font-semibold">Variant B (Climax Peak):</strong> Mystery reveal with high-contrast text overlay and narrative tension.</span>
+                  </div>
+                  <div className="flex items-start gap-2.5 text-xs text-secondary">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
+                    <span><strong className="text-primary font-semibold">YouTube Studio Native:</strong> Formatted to exact 1920×1080 and 1280×720 YouTube Studio specifications.</span>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex flex-wrap items-center gap-3">
+                  <button type="button" onClick={() => onNewJob()} className="btn-primary !text-xs">
+                    Launch With A/B Covers <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                  <button type="button" onClick={() => setPipelineStage('audio')} className="btn-secondary !text-xs">
+                    Next: Neural Audio &rarr;
+                  </button>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div className="rounded-xl border border-theme bg-[var(--app-surface)] p-3">
-                  <p className="text-[11px] font-extrabold text-primary flex items-center gap-1.5">
-                    <Video className="h-3.5 w-3.5 brand-text" /> 16:9 Landscape
-                  </p>
-                  <p className="mt-0.5 text-[10px] text-secondary">Full YouTube long-form video essays</p>
+              {/* Realistic YouTube Studio A/B Test Card */}
+              <div className="overflow-hidden rounded-xl border border-theme bg-[#121316] text-neutral-100 shadow-xl">
+                <div className="flex items-center justify-between border-b border-neutral-800 bg-[#191a1f] px-4 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-amber-500/80" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
+                    <span className="ml-2 font-mono text-[11px] text-neutral-400">YouTube Studio · Test &amp; Compare</span>
+                  </div>
+                  <span className="rounded bg-amber-500/20 px-2 py-0.5 font-mono text-[10px] font-bold text-amber-300">
+                    16:9 Packaging Ready
+                  </span>
                 </div>
-                <div className="rounded-xl border border-theme bg-[var(--app-surface)] p-3">
-                  <p className="text-[11px] font-extrabold text-primary flex items-center gap-1.5">
-                    <Film className="h-3.5 w-3.5 brand-text" /> 9:16 Vertical
-                  </p>
-                  <p className="mt-0.5 text-[10px] text-secondary">YouTube Shorts, TikTok &amp; IG Reels</p>
+
+                <div className="p-4 sm:p-5 bg-[#111215]">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    {/* Thumbnail A */}
+                    <div className="rounded-lg border border-neutral-800 bg-[#17181e] p-2.5">
+                      <div className="relative aspect-video w-full rounded overflow-hidden bg-gradient-to-tr from-stone-900 via-neutral-800 to-amber-950 flex flex-col justify-between p-2.5 border border-neutral-700/60">
+                        <span className="self-start rounded bg-black/75 px-1.5 py-0.5 font-mono text-[9px] font-bold text-amber-300 backdrop-blur-sm">
+                          Variant A · Hook Hero
+                        </span>
+                        <div>
+                          <p className="font-extrabold text-[12px] text-white drop-shadow-md leading-tight">THE $160M HEIST</p>
+                          <span className="inline-block mt-0.5 rounded bg-emerald-500/90 px-1.5 py-0.5 text-[9px] font-extrabold text-black">
+                            58.4% CTR
+                          </span>
+                        </div>
+                      </div>
+                      <p className="mt-2 text-[10px] text-neutral-400 font-mono text-center">Focal character with volumetric lighting</p>
+                    </div>
+
+                    {/* Thumbnail B */}
+                    <div className="rounded-lg border border-amber-500/40 bg-[#1a1815] p-2.5">
+                      <div className="relative aspect-video w-full rounded overflow-hidden bg-gradient-to-tr from-stone-950 via-red-950/80 to-neutral-900 flex flex-col justify-between p-2.5 border border-red-500/40">
+                        <span className="self-start rounded bg-amber-500 px-1.5 py-0.5 font-mono text-[9px] font-extrabold text-black">
+                          Variant B · Climax Peak
+                        </span>
+                        <div>
+                          <p className="font-extrabold text-[12px] text-white drop-shadow-md leading-tight">4 HOURS. ZERO ALARMS.</p>
+                          <span className="inline-block mt-0.5 rounded bg-amber-400 px-1.5 py-0.5 text-[9px] font-black text-black">
+                            64.2% CTR (Winner)
+                          </span>
+                        </div>
+                      </div>
+                      <p className="mt-2 text-[10px] text-amber-300 font-mono text-center">High-tension infrared climax reveal</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-neutral-800/80 flex items-center justify-between text-[10px] text-neutral-400">
+                    <span>Export: 1280×720 &amp; 1920×1080 JPEG</span>
+                    <span className="font-mono text-amber-300 font-bold">YouTube Studio A/B Ready</span>
+                  </div>
                 </div>
               </div>
+            </>
+          )}
+
+          {/* Stage 3: Neural Speech & Subtitles */}
+          {pipelineStage === 'audio' && (
+            <>
+              <div>
+                <span className="font-mono text-[11px] font-bold tracking-widest text-[var(--app-brand)] uppercase">
+                  Stage 03 · Neural Speech &amp; Subtitles
+                </span>
+                <h3 className="editorial-title mt-2 text-2xl sm:text-3xl text-primary">
+                  Human cadence in English &amp; Hindi with auto-ducked music.
+                </h3>
+                <p className="mt-3 text-xs sm:text-sm leading-relaxed text-secondary">
+                  Robotic text-to-speech kills viewer watch time within seconds. KinesisFlow synthesizes human-sounding narration in English and conversational Hindi via Sarvam AI. Timed animated subtitles keep viewers reading, while background music automatically ducks below speech so every word cuts through mobile speakers.
+                </p>
+
+                <div className="mt-5 space-y-3">
+                  <div className="flex items-start gap-2.5 text-xs text-secondary">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
+                    <span><strong className="text-primary font-semibold">Sarvam AI Hindi:</strong> Natural conversational tone with authentic Indian inflection and dramatic pacing.</span>
+                  </div>
+                  <div className="flex items-start gap-2.5 text-xs text-secondary">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
+                    <span><strong className="text-primary font-semibold">Studio English:</strong> Deep documentary pacing with natural human breath pauses and narrative warmth.</span>
+                  </div>
+                  <div className="flex items-start gap-2.5 text-xs text-secondary">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
+                    <span><strong className="text-primary font-semibold">Smart Audio Ducking:</strong> Ambient score automatically attenuates to -18.5dB whenever speech is active.</span>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex flex-wrap items-center gap-3">
+                  <button type="button" onClick={() => onNewJob()} className="btn-primary !text-xs">
+                    Try Neural Voiceover <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                  <button type="button" onClick={() => setPipelineStage('timeline')} className="btn-secondary !text-xs">
+                    Next: Cinematic Motion &rarr;
+                  </button>
+                </div>
+              </div>
+
+              {/* Realistic Audio Mastering Deck & Karaoke Frame Mockup */}
+              <div className="overflow-hidden rounded-xl border border-theme bg-[#121316] text-neutral-100 shadow-xl">
+                <div className="flex items-center justify-between border-b border-neutral-800 bg-[#191a1f] px-4 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-amber-500/80" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
+                    <span className="ml-2 font-mono text-[11px] text-neutral-400">Audio Deck · Dual-Track Master</span>
+                  </div>
+                  <span className="rounded bg-emerald-500/20 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-400">
+                    Smart Ducking Active (-18.5 dB)
+                  </span>
+                </div>
+
+                <div className="p-4 sm:p-5 bg-[#111215] space-y-4">
+                  {/* Voice selector chips */}
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <span className="rounded-md border border-[var(--app-brand)]/80 bg-[var(--app-brand-soft)]/20 px-2.5 py-1 text-[11px] font-bold text-amber-300 flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+                      Sarvam AI · Hindi (Conversational)
+                    </span>
+                    <span className="rounded-md border border-neutral-800 bg-[#17181e] px-2.5 py-1 text-[11px] font-medium text-neutral-300">
+                      Studio English · Deep Documentary
+                    </span>
+                  </div>
+
+                  {/* Audio Waveform Meter */}
+                  <div className="rounded-lg border border-neutral-800 bg-[#15161c] p-3">
+                    <div className="flex items-center justify-between text-[10px] text-neutral-400 font-mono mb-2">
+                      <span className="flex items-center gap-1.5 text-neutral-300">
+                        <Volume2 className="h-3 w-3 text-amber-400" /> Speech Frequency Spectrum
+                      </span>
+                      <span>48 kHz · 24-bit PCM</span>
+                    </div>
+                    <div className="flex items-end justify-between gap-1 h-10 px-1">
+                      {[35, 60, 45, 85, 95, 70, 50, 80, 100, 65, 40, 90, 80, 55, 75, 95, 60, 45, 85, 70, 40, 30, 60, 45].map((h, i) => (
+                        <div
+                          key={i}
+                          style={{ height: `${h}%` }}
+                          className={`w-full rounded-sm transition-all ${
+                            h > 75 ? 'bg-amber-400' : h > 50 ? 'bg-orange-500' : 'bg-neutral-600'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Karaoke Subtitle Player Preview */}
+                  <div className="relative aspect-[16/7] w-full rounded-lg overflow-hidden bg-neutral-900 border border-neutral-800 flex items-center justify-center p-4">
+                    <div className="text-center">
+                      <p className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest mb-1">Burnt-In Timed Subtitle</p>
+                      <p className="text-sm sm:text-base font-extrabold text-white tracking-tight leading-snug">
+                        &ldquo;THEY WALKED OUT WITH <span className="bg-amber-400 text-black px-1.5 py-0.5 rounded font-black">$160 MILLION</span> IN CASH&rdquo;
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Mixer track meter */}
+                  <div className="grid grid-cols-2 gap-2 text-[10px] font-mono border-t border-neutral-800/80 pt-3">
+                    <div className="text-neutral-300">
+                      <span className="text-neutral-500">VOICEOVER:</span> 0.0 dB (Mastered)
+                    </div>
+                    <div className="text-amber-400 text-right">
+                      <span className="text-neutral-500">AMBIENT SCORE:</span> -18.5 dB (Ducked)
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Stage 4: Cinematic Motion & Timeline Editor */}
+          {pipelineStage === 'timeline' && (
+            <>
+              <div>
+                <span className="font-mono text-[11px] font-bold tracking-widest text-[var(--app-brand)] uppercase">
+                  Stage 04 · Cinematography &amp; Timeline
+                </span>
+                <h3 className="editorial-title mt-2 text-2xl sm:text-3xl text-primary">
+                  10 visual cuts per minute. Full pre-flight timeline editing.
+                </h3>
+                <p className="mt-3 text-xs sm:text-sm leading-relaxed text-secondary">
+                  Static AI slides cause immediate audience drop-off. KinesisFlow enriches every still with cinematic Ken Burns camera motion—slow zooms, horizontal pans, and gentle crossfades. Need to revise a line or replace an image? Tweak individual scenes in the timeline editor without re-running the project or wasting credits.
+                </p>
+
+                <div className="mt-5 space-y-3">
+                  <div className="flex items-start gap-2.5 text-xs text-secondary">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
+                    <span><strong className="text-primary font-semibold">10 Visual Cuts per Minute:</strong> Zero stillness ensures continuous visual engagement past the 30-second mark.</span>
+                  </div>
+                  <div className="flex items-start gap-2.5 text-xs text-secondary">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
+                    <span><strong className="text-primary font-semibold">Ken Burns Camera Directing:</strong> Pan, zoom, tilt, and crossfade easing applied automatically to every frame.</span>
+                  </div>
+                  <div className="flex items-start gap-2.5 text-xs text-secondary">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
+                    <span><strong className="text-primary font-semibold">Zero-Credit Timeline Review:</strong> Re-generate any single scene or audio clip without project restarts.</span>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex flex-wrap items-center gap-3">
+                  <button type="button" onClick={() => onNewJob()} className="btn-primary !text-xs">
+                    Try Timeline Editor <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                  <button type="button" onClick={() => setPipelineStage('master')} className="btn-secondary !text-xs">
+                    Next: 1080p Master &rarr;
+                  </button>
+                </div>
+              </div>
+
+              {/* Realistic NLE Timeline Mockup */}
+              <div className="overflow-hidden rounded-xl border border-theme bg-[#121316] text-neutral-100 shadow-xl">
+                <div className="flex items-center justify-between border-b border-neutral-800 bg-[#191a1f] px-4 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-amber-500/80" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
+                    <span className="ml-2 font-mono text-[11px] text-neutral-400">NLE Timeline · 10 Cuts / Minute</span>
+                  </div>
+                  <span className="font-mono text-[10px] text-amber-300 font-bold">
+                    00:01:24:18 · 24.00 FPS
+                  </span>
+                </div>
+
+                <div className="p-4 sm:p-5 bg-[#111215] space-y-3 font-mono text-xs">
+                  {/* Track V1: Visuals */}
+                  <div className="rounded-lg border border-neutral-800 bg-[#16171d] p-2.5">
+                    <div className="flex items-center justify-between text-[10px] text-neutral-400 mb-1.5">
+                      <span className="font-bold text-amber-400">V1 · VISUAL SCENES (KEN BURNS)</span>
+                      <span>4K Motion Cues</span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      <div className="rounded bg-neutral-800/80 border border-neutral-700/60 p-1.5 text-center">
+                        <p className="text-[9px] font-bold text-white">Scene 01</p>
+                        <p className="text-[8px] text-amber-300">Slow Push +15%</p>
+                      </div>
+                      <div className="rounded bg-neutral-800/80 border border-neutral-700/60 p-1.5 text-center">
+                        <p className="text-[9px] font-bold text-white">Scene 02</p>
+                        <p className="text-[8px] text-emerald-300">Pan Left 24fps</p>
+                      </div>
+                      <div className="rounded bg-neutral-800/80 border border-neutral-700/60 p-1.5 text-center">
+                        <p className="text-[9px] font-bold text-white">Scene 03</p>
+                        <p className="text-[8px] text-amber-300">Macro Zoom</p>
+                      </div>
+                      <div className="rounded bg-neutral-800/80 border border-neutral-700/60 p-1.5 text-center">
+                        <p className="text-[9px] font-bold text-white">Scene 04</p>
+                        <p className="text-[8px] text-orange-300">Crossfade Easing</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Track A1: Voiceover */}
+                  <div className="rounded-lg border border-neutral-800 bg-[#16171d] p-2">
+                    <div className="flex items-center justify-between text-[10px] text-emerald-400 mb-1">
+                      <span className="font-bold">A1 · VOICEOVER MASTER</span>
+                      <span className="text-neutral-500">48kHz · Sarvam AI</span>
+                    </div>
+                    <div className="h-4 rounded bg-emerald-950/60 border border-emerald-800/60 flex items-center px-2">
+                      <span className="text-[9px] text-emerald-300 truncate">narration_sync_hi_en_master.wav</span>
+                    </div>
+                  </div>
+
+                  {/* Track A2: Score */}
+                  <div className="rounded-lg border border-neutral-800 bg-[#16171d] p-2">
+                    <div className="flex items-center justify-between text-[10px] text-sky-400 mb-1">
+                      <span className="font-bold">A2 · AMBIENT SCORE (DUCKED)</span>
+                      <span className="text-neutral-500">-18.5 dB Ducking</span>
+                    </div>
+                    <div className="h-4 rounded bg-sky-950/60 border border-sky-800/60 flex items-center px-2">
+                      <span className="text-[9px] text-sky-300 truncate">cinematic_tension_score_ducked.wav</span>
+                    </div>
+                  </div>
+
+                  {/* Track T1: Subtitles */}
+                  <div className="rounded-lg border border-neutral-800 bg-[#16171d] p-2">
+                    <div className="flex items-center justify-between text-[10px] text-amber-400 mb-1">
+                      <span className="font-bold">T1 · KARAOKE SUBTITLES</span>
+                      <span className="text-neutral-500">Burned-In Timed</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1">
+                      <div className="h-3.5 rounded bg-amber-950/60 border border-amber-800/60 flex items-center px-1.5 text-[8px] text-amber-300">
+                        [00:00 - 00:04]
+                      </div>
+                      <div className="h-3.5 rounded bg-amber-950/60 border border-amber-800/60 flex items-center px-1.5 text-[8px] text-amber-300">
+                        [00:04 - 00:08]
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-neutral-800/80 flex items-center justify-between text-[10px] text-neutral-400">
+                    <span className="text-emerald-400 font-bold">✓ Pre-Flight Scene Review</span>
+                    <span>Zero credits lost on scene edits</span>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Stage 5: 1080p Master & Rights */}
+          {pipelineStage === 'master' && (
+            <>
+              <div>
+                <span className="font-mono text-[11px] font-bold tracking-widest text-[var(--app-brand)] uppercase">
+                  Stage 05 · Production Master &amp; Rights
+                </span>
+                <h3 className="editorial-title mt-2 text-2xl sm:text-3xl text-primary">
+                  1080p MP4 ready to upload. 100% monetization safe.
+                </h3>
+                <p className="mt-3 text-xs sm:text-sm leading-relaxed text-secondary">
+                  Export pristine 1080p MP4 files ready for direct YouTube upload or vertical Shorts (9:16). Every production comes with full commercial broadcast rights—cleared for YouTube AdSense monetization, brand sponsorships, and client contracts without copyright claims.
+                </p>
+
+                <div className="mt-5 space-y-3">
+                  <div className="flex items-start gap-2.5 text-xs text-secondary">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
+                    <span><strong className="text-primary font-semibold">Dual Master Formats:</strong> 16:9 Long-Form for YouTube channel growth &amp; 9:16 for viral Shorts/Reels.</span>
+                  </div>
+                  <div className="flex items-start gap-2.5 text-xs text-secondary">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
+                    <span><strong className="text-primary font-semibold">High-Profile H.264 MP4:</strong> Universal compatibility with burned-in subtitles and instant YouTube processing.</span>
+                  </div>
+                  <div className="flex items-start gap-2.5 text-xs text-secondary">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
+                    <span><strong className="text-primary font-semibold">100% Monetization Safe:</strong> Cleared for AdSense with zero copyright strikes or royalty claims.</span>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex flex-wrap items-center gap-3">
+                  <button type="button" onClick={() => onNewJob()} className="btn-primary !text-xs">
+                    Start Your First Master <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                  <button type="button" onClick={onOpenPricing} className="btn-secondary !text-xs">
+                    View Pricing Plans &rarr;
+                  </button>
+                </div>
+              </div>
+
+              {/* Realistic Master Render Queue Inspector Mockup */}
+              <div className="overflow-hidden rounded-xl border border-theme bg-[#121316] text-neutral-100 shadow-xl">
+                <div className="flex items-center justify-between border-b border-neutral-800 bg-[#191a1f] px-4 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-amber-500/80" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
+                    <span className="ml-2 font-mono text-[11px] text-neutral-400">Master Export Queue · 1080p60</span>
+                  </div>
+                  <span className="rounded bg-emerald-500/20 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-400 flex items-center gap-1">
+                    <ShieldCheck className="h-3 w-3" /> AdSense Cleared
+                  </span>
+                </div>
+
+                <div className="p-4 sm:p-5 bg-[#111215] space-y-3.5">
+                  <div className="rounded-lg border border-neutral-800 bg-[#17181e] p-3">
+                    <p className="font-mono text-[11px] font-bold text-white truncate">
+                      kinesisflow_antwerp_vault_heist_1080p.mp4
+                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-mono text-neutral-400">
+                      <span className="rounded bg-neutral-800 px-2 py-0.5 text-neutral-200">1920×1080 (16:9)</span>
+                      <span className="rounded bg-neutral-800 px-2 py-0.5 text-neutral-200">60.00 FPS</span>
+                      <span className="rounded bg-neutral-800 px-2 py-0.5 text-neutral-200">H.264 High Profile</span>
+                      <span className="rounded bg-neutral-800 px-2 py-0.5 text-neutral-200">320kbps AAC</span>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-emerald-500/30 bg-emerald-950/20 p-3 space-y-2 text-xs">
+                    <p className="font-bold text-emerald-400 flex items-center gap-1.5 text-xs">
+                      <ShieldCheck className="h-4 w-4" /> Commercial License Clearance
+                    </p>
+                    <div className="space-y-1 text-[11px] text-neutral-300">
+                      <p className="flex items-center gap-1.5">
+                        <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                        YouTube Content ID Verified: Zero copyright strikes
+                      </p>
+                      <p className="flex items-center gap-1.5">
+                        <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                        Burned-in timed karaoke subtitles synchronized
+                      </p>
+                      <p className="flex items-center gap-1.5">
+                        <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                        Dual 16:9 thumbnails included in download package
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-neutral-800/80 flex items-center justify-between text-[11px]">
+                    <span className="font-mono text-neutral-400">Master Output: Ready</span>
+                    <span className="rounded bg-emerald-500/20 px-2 py-0.5 font-bold text-emerald-400 text-[10px] uppercase">
+                      100% Commercial Ownership
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Editorial Architecture Strip (Unslop - No Icon Cards) */}
+        <div className="mt-10 border-t border-theme/80 pt-8">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3 md:gap-8">
+            <div className="border-l-2 border-l-[var(--app-brand)] pl-4">
+              <span className="font-mono text-[10px] font-bold tracking-widest text-secondary uppercase">
+                01 · Retention Architecture
+              </span>
+              <h4 className="mt-1 text-sm font-bold text-primary">10 Visual Cuts Per Minute</h4>
+              <p className="mt-1.5 text-xs leading-relaxed text-secondary">
+                Curiosity hooks, pattern interrupts, and smooth Ken Burns motion keep audience retention well past the critical 30-second cliff.
+              </p>
             </div>
 
-            <div className="mt-5 border-t border-theme/60 pt-3 flex flex-wrap items-center justify-between gap-2 text-[11px]">
-              <span className="font-semibold text-secondary">Format: 1080p H.264 MP4 master with synchronized audio and captions</span>
-              <span className="rounded bg-[var(--app-brand-soft)] px-2 py-0.5 font-bold brand-text text-[10px] uppercase tracking-wide">
-                100% Commercial AdSense License
+            <div className="border-l-2 border-l-[var(--app-brand)] pl-4">
+              <span className="font-mono text-[10px] font-bold tracking-widest text-secondary uppercase">
+                02 · YouTube Studio Packaging
               </span>
+              <h4 className="mt-1 text-sm font-bold text-primary">Dual 16:9 High-CTR Thumbnails</h4>
+              <p className="mt-1.5 text-xs leading-relaxed text-secondary">
+                Hook Hero and Climax Peak variations formatted at native 16:9 with saturated lighting—ready for YouTube Studio A/B experiments.
+              </p>
+            </div>
+
+            <div className="border-l-2 border-l-[var(--app-brand)] pl-4">
+              <span className="font-mono text-[10px] font-bold tracking-widest text-secondary uppercase">
+                03 · Commercial Rights
+              </span>
+              <h4 className="mt-1 text-sm font-bold text-primary">1080p MP4 &amp; AdSense Cleared</h4>
+              <p className="mt-1.5 text-xs leading-relaxed text-secondary">
+                Sarvam AI Hindi &amp; English narration with ducked ambient score. Complete commercial ownership for YouTube monetization and sponsorships.
+              </p>
             </div>
           </div>
         </div>
