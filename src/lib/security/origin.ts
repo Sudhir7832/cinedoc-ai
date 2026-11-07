@@ -11,6 +11,14 @@ function normalizeOrigin(value: string): string | null {
   }
 }
 
+function hostsMatch(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (a.replace(/^www\./, '') === b.replace(/^www\./, '')) return true;
+  const known = ['kinesisflow.com', 'linodeusercontent.com', '170.187.238.145'];
+  if (known.some(k => a.includes(k)) && known.some(k => b.includes(k))) return true;
+  return false;
+}
+
 function requestHost(req: NextRequest): string | null {
   const forwarded = req.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
   return forwarded || req.headers.get('host')?.trim() || null;
@@ -29,10 +37,10 @@ export function getCanonicalOrigin(req: NextRequest): string {
     if (suppliedHost) {
       const match = normalizedList.find(o => {
         const u = new URL(o);
-        return u.host.toLowerCase() === suppliedHost;
+        return hostsMatch(u.host.toLowerCase(), suppliedHost);
       });
       if (match) {
-        return match;
+        return `${suppliedProto}://${suppliedHost}`;
       }
     }
 
@@ -44,6 +52,16 @@ export function getCanonicalOrigin(req: NextRequest): string {
 
       // If NEXT_PUBLIC_SITE_URL was left as localhost/127.0.0.1, but the app is deployed to a server:
       if (isPrimaryLocal && suppliedHost && !suppliedHost.includes('localhost') && !suppliedHost.includes('127.0.0.1')) {
+        return `${suppliedProto}://${suppliedHost}`;
+      }
+
+      // If domain matches (including www vs non-www or transition from Linode hostname/IP to kinesisflow.com)
+      if (suppliedHost && hostsMatch(suppliedHost, primaryHost)) {
+        return `${suppliedProto}://${suppliedHost}`;
+      }
+
+      // If configured was a Linode hostname/IP or localhost, allow custom domain
+      if (suppliedHost && (primaryHost.includes('linodeusercontent.com') || primaryHost.includes('170.187.238.145'))) {
         return `${suppliedProto}://${suppliedHost}`;
       }
 
