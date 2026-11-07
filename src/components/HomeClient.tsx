@@ -319,6 +319,7 @@ export function HomeClient() {
             <Link href="/terms" className="hover:text-[var(--app-text)] transition">Terms</Link>
             <Link href="/privacy" className="hover:text-[var(--app-text)] transition">Privacy</Link>
             <Link href="/about" className="hover:text-[var(--app-text)] transition">About</Link>
+            <Link href="/blog" className="hover:text-[var(--app-text)] transition">Blog</Link>
             <Link href="/faq" className="hover:text-[var(--app-text)] transition">FAQ</Link>
             <button onClick={() => setActiveModal('credits')} className="hover:text-[var(--app-text)] transition">Credits</button>
           </div>

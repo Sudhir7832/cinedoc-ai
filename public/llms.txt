@@ -1,10 +1,11 @@
 # KinesisFlow
 
-> KinesisFlow is an AI-assisted video creation product for documentary-style and Kids & Family videos. The legal operator is not yet confirmed and must be added before launch.
+> KinesisFlow is an AI-assisted video creation product for documentary-style and Kids & Family videos.
 
 ## Public pages
 
 - Home and production studio: /
+- Creator blog and SEO guides: /blog
 - About the platform: /about
 - Frequently asked questions: /faq
 - Terms and Conditions: /terms
@@ -45,7 +46,4 @@
 - Creators must review factual claims, intellectual-property rights, age appropriateness, pronunciation, and final output before publishing.
 - Availability and output quality depend on configured third-party AI, storage, authentication, and payment providers.
 
-## Legal status
 
-- KinesisFlow is the product name, not a confirmed legal entity.
-- RELEASE BLOCKER: add the verified legal operator, jurisdiction, contact details, and effective legal terms before public launch.

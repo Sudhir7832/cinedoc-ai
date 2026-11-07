@@ -2,22 +2,22 @@ import type { Metadata } from 'next';
 import { HomeClient } from '@/components/HomeClient';
 import { getSiteUrl, PRODUCT_NAME } from '@/lib/brand';
 
-const description = 'Create documentary-style videos and Kids & Family videos from a topic or script with AI-assisted scenes, narration, optional subtitles, timeline editing, and MP4 rendering.';
+const description = 'Turn one topic into documentaries, kids videos, and viral YouTube content. Auto-generates scripts, cinematic visuals, neural voiceover, subtitles, and dual high-CTR 16:9 YouTube thumbnails.';
 
 export const metadata: Metadata = {
-  title: { absolute: 'KinesisFlow | Documentary and Kids Video Creator' },
+  title: { absolute: 'KinesisFlow | Turn Topics Into Documentaries, Kids Videos & Viral YouTube Content' },
   description,
   alternates: { canonical: '/' },
   openGraph: {
     type: 'website',
     url: '/',
-    title: 'KinesisFlow | Documentary and Kids Video Creator',
+    title: 'KinesisFlow | Turn Topics Into Documentaries, Kids Videos & Viral YouTube Content',
     description,
     images: ['/opengraph-image'],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'KinesisFlow | Documentary and Kids Video Creator',
+    title: 'KinesisFlow | Turn Topics Into Documentaries, Kids Videos & Viral YouTube Content',
     description,
     images: ['/opengraph-image'],
   },
@@ -52,12 +52,14 @@ export default function HomePage() {
         operatingSystem: 'Web',
         description,
         featureList: [
+          'Faceless YouTube channel automation and workflows',
+          'Dual high-CTR 16:9 YouTube thumbnail generation for A/B testing',
           'Documentary-style and Kids & Family video workflows',
-          'Topic-to-script and custom-script creation',
-          'AI-assisted scene visuals and narration',
-          'Optional burned-in subtitles',
-          'Scene and timeline editing',
-          'Landscape and one-minute vertical MP4 rendering',
+          'Topic-to-script and custom-script creation with review step',
+          'AI-assisted scene visuals with Ken Burns motion and neural voiceover',
+          'Timed burned-in subtitles and multi-language support (English & Hindi)',
+          'Scene and timeline editing without rebuilding projects',
+          'Landscape 16:9 and vertical 9:16 1080p MP4 rendering',
         ],
         brand: { '@id': `${siteUrl}/#brand` },
       },

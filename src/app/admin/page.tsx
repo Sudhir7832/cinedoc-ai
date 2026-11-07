@@ -32,14 +32,16 @@ import {
   Video,
   Receipt,
   Copy,
+  Mail,
 } from 'lucide-react';
 import { SafeUser, DocumentaryJob, PaymentTransaction, PricingPack, TtsProvider } from '@/lib/types';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { TtsStudioTester } from '@/components/TtsStudioTester';
 import { NarrationProfileSettings } from '@/components/NarrationProfileSettings';
 import { AdminTestimonialsPanel } from '@/components/AdminTestimonialsPanel';
+import { AdminEmailPanel } from '@/components/AdminEmailPanel';
 
-type AdminTab = 'overview' | 'users' | 'transactions' | 'jobs' | 'showcase' | 'voice' | 'settings';
+type AdminTab = 'overview' | 'users' | 'transactions' | 'jobs' | 'showcase' | 'voice' | 'emails' | 'settings';
 
 interface AdminStats {
   totalUsers: number;
@@ -70,6 +72,7 @@ export default function AdminPage() {
   const [txGatewayFilter, setTxGatewayFilter] = useState<'all' | 'razorpay' | 'stripe' | 'dodo' | 'test'>('all');
   const [txStatusFilter, setTxStatusFilter] = useState<'all' | 'completed' | 'pending' | 'failed'>('all');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [emailPrefill, setEmailPrefill] = useState<string | undefined>(undefined);
 
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -352,6 +355,7 @@ export default function AdminPage() {
     jobs: { title: 'Production registry', description: 'Review every documentary moving through the rendering pipeline.' },
     showcase: { title: 'Testimonial showcase', description: 'Publish and manage landscape, Reels, and TikTok-format creator videos.' },
     voice: { title: 'Admin Voice Lab', description: 'Test narration providers and promote an approved voice to the platform default.' },
+    emails: { title: 'Email dispatch console', description: 'Compose, preview, and send custom domain emails to users via Resend.' },
     settings: { title: 'Platform configuration', description: 'Control providers, pricing, credits, payments, and production defaults.' },
   };
   const adminTabs = [
@@ -361,6 +365,7 @@ export default function AdminPage() {
     { id: 'jobs' as const, label: `Productions ${jobs.length}`, icon: Film },
     { id: 'showcase' as const, label: 'Showcase', icon: GalleryVerticalEnd },
     { id: 'voice' as const, label: 'Voice Lab', icon: RadioTower },
+    { id: 'emails' as const, label: 'Emails', icon: Mail },
     { id: 'settings' as const, label: 'Settings', icon: Settings },
   ];
 
@@ -779,6 +784,21 @@ export default function AdminPage() {
                         </td>
                         <td className="py-3 px-4 text-right">
                           <div className="flex items-center justify-end gap-1.5">
+                            {/* Email user */}
+                            {u.email && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEmailPrefill(u.email);
+                                  setActiveTab('emails');
+                                }}
+                                className="px-2 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-[11px] font-semibold flex items-center gap-1 border border-amber-500/20 transition"
+                                title={`Send email to ${u.email}`}
+                              >
+                                <Mail className="w-3 h-3" />
+                                <span>Email</span>
+                              </button>
+                            )}
                             {/* Add 50 credits */}
                             <button
                               onClick={() => handleAdjustCredits(u.id, 50)}
@@ -1118,6 +1138,16 @@ export default function AdminPage() {
             </div>
             <TtsStudioTester onSavedAsDefault={() => void loadAdminData()} />
           </div>
+        )}
+
+        {/* TAB: EMAIL DISPATCH CONSOLE */}
+        {activeTab === 'emails' && (
+          <AdminEmailPanel
+            currentUser={currentUser}
+            allUsers={users}
+            prefilledUserEmail={emailPrefill}
+            onClearPrefill={() => setEmailPrefill(undefined)}
+          />
         )}
 
         {/* TAB 5: SAAS & PAYMENT SETTINGS */}

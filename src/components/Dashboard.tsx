@@ -22,6 +22,9 @@ import {
   WandSparkles,
   Languages,
   Music2,
+  Youtube,
+  TrendingUp,
+  Sparkles,
 } from 'lucide-react';
 import { DocumentaryJob, SafeUser } from '@/lib/types';
 import { SampleShowcase } from '@/components/SampleShowcase';
@@ -40,16 +43,17 @@ interface DashboardProps {
 
 const TOPICS = [
   'The hidden cities beneath the Sahara',
-  'How deep-sea creatures create light',
-  'The race to map the early universe',
-  'प्राचीन सिंधु घाटी का रहस्य',
+  'How the Rothschild family built modern finance',
+  'How deep-sea creatures survive extreme pressure',
+  'The AI revolution nobody saw coming',
+  'प्राचीन सिंधु घाटी का अनसुलझा रहस्य',
 ];
 
 const PIPELINE = [
-  { label: 'Editorial script', detail: 'Narrative structure and scene plan', icon: WandSparkles },
-  { label: 'Cinematic visuals', detail: '10 art-directed frames per minute', icon: Images },
-  { label: 'Neural narration', detail: 'Voice, timing, and subtitles', icon: Mic2 },
-  { label: 'Master render', detail: '1080p delivery with motion', icon: Video },
+  { label: 'Viral narrative script', detail: 'High-retention hooks & 10-scene pacing', icon: WandSparkles },
+  { label: 'Cinematic visuals', detail: '10 art-directed frames per minute with motion', icon: Images },
+  { label: 'Neural voice & captions', detail: 'English & Hindi speech with timed subtitles', icon: Mic2 },
+  { label: '1080p master & thumbnails', detail: 'MP4 render + dual 16:9 YouTube covers', icon: Video },
 ];
 
 function formatDuration(seconds?: number): string {
@@ -69,7 +73,7 @@ export function Dashboard({
   onDeleteJob,
   onOpenPricing,
 }: DashboardProps) {
-  const [activeTab, setActiveTab] = useState<'studio' | 'features'>('studio');
+  const [activeTab, setActiveTab] = useState<'studio' | 'faceless' | 'features'>('studio');
   const [promptInput, setPromptInput] = useState('');
   const [masterVideo, setMasterVideo] = useState<string>('');
   const [masterPoster, setMasterPoster] = useState<string>('');
@@ -106,10 +110,10 @@ export function Dashboard({
             <p className="eyebrow mb-5">KinesisFlow video workspace</p>
 
             <h1 className="editorial-title max-w-2xl text-4xl leading-[1.02] text-primary sm:text-5xl lg:text-[3.8rem]">
-              Create documentary-style and Kids &amp; Family videos from one idea.
+              Turn One Topic Into Documentaries, Kids Videos &amp; Viral YouTube Content.
             </h1>
             <p className="mt-5 max-w-2xl text-sm leading-7 text-secondary sm:text-base">
-              KinesisFlow turns a topic or script into planned scenes, generated visuals, narration, optional subtitles, and a 1080p MP4. Choose cinematic documentary direction or a Kids &amp; Family format before production starts.
+              Turn any topic or script into high-RPM faceless documentaries, YouTube Shorts, and Kids stories. KinesisFlow automates the entire pipeline: narrative script, cinematic scenes with Ken Burns motion, neural voiceover, timed subtitles, and dual high-CTR 16:9 YouTube thumbnails - ready for YouTube Studio.
             </p>
 
             <label htmlFor="documentary-topic" className="mt-8 block text-xs font-semibold text-primary">Topic or production brief</label>
@@ -121,7 +125,7 @@ export function Dashboard({
                     id="documentary-topic"
                     value={promptInput}
                     onChange={event => setPromptInput(event.target.value)}
-                    placeholder="Enter a topic or production brief"
+                    placeholder="Enter a topic or production brief (e.g. The Secret History of Silicon Valley)"
                     className="w-full bg-transparent text-sm text-primary outline-none placeholder:text-[var(--app-text-muted)]"
                   />
                 </div>
@@ -146,10 +150,11 @@ export function Dashboard({
             </div>
 
             <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-theme pt-5 text-xs font-medium text-secondary">
-              <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-[var(--app-success)]" aria-hidden="true" />1080p master</span>
-              <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-[var(--app-success)]" aria-hidden="true" />Timed subtitles</span>
-              <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-[var(--app-success)]" aria-hidden="true" />Neural voice</span>
-              <span className="flex items-center gap-1.5"><Languages className="h-3.5 w-3.5 text-[var(--app-accent)]" aria-hidden="true" />Hindi, English, and selected languages</span>
+              <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-[var(--app-success)]" aria-hidden="true" />1080p Master MP4</span>
+              <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-[var(--app-success)]" aria-hidden="true" />Dual 16:9 High-CTR Thumbnails</span>
+              <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-[var(--app-success)]" aria-hidden="true" />Faceless YouTube Automation</span>
+              <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-[var(--app-success)]" aria-hidden="true" />Neural Voice &amp; Timed Subtitles</span>
+              <span className="flex items-center gap-1.5"><Languages className="h-3.5 w-3.5 text-[var(--app-accent)]" aria-hidden="true" />English, Native Hindi &amp; Multilingual</span>
             </div>
           </div>
         </div>
@@ -235,6 +240,7 @@ export function Dashboard({
           <div className="flex max-w-full items-center gap-6 overflow-x-auto">
             {[
               { id: 'studio' as const, label: `Projects ${jobs.length}`, icon: Film },
+              { id: 'faceless' as const, label: 'Faceless YouTube Engine', icon: Youtube },
               { id: 'features' as const, label: 'Production toolkit', icon: Layers3 },
             ].map(tab => {
               const Icon = tab.icon;
@@ -247,7 +253,7 @@ export function Dashboard({
                   className={`flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-0 text-xs font-bold transition-colors ${active ? 'border-[var(--app-brand)] text-primary' : 'border-transparent text-secondary hover:text-[var(--app-text)]'}`}
                   aria-pressed={active}
                 >
-                  <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+                  <Icon className={`h-3.5 w-3.5 ${tab.id === 'faceless' ? 'text-red-500' : ''}`} aria-hidden="true" />
                   {tab.label}
                 </button>
               );
@@ -340,6 +346,108 @@ export function Dashboard({
           </div>
         )}
 
+        {activeTab === 'faceless' && (
+          <div className="space-y-8">
+            <div className="surface-card border-l-2 border-l-[var(--app-brand)] p-6 sm:p-8">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="eyebrow mb-2">YouTube Automation Pipeline</p>
+                  <h3 className="editorial-title text-2xl text-primary sm:text-3xl">High-RPM Faceless Niches</h3>
+                  <p className="mt-1 text-sm text-secondary">Launch automated channels in proven YouTube niches with one-click production templates.</p>
+                </div>
+                <button type="button" onClick={() => onNewJob()} className="btn-primary self-start md:self-auto shrink-0">
+                  <Plus className="h-4 w-4" aria-hidden="true" /> Start Faceless Video
+                </button>
+              </div>
+
+              <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {[
+                  {
+                    title: 'Wealth & Finance',
+                    rpm: '$15 - $35 RPM',
+                    topic: 'How the Rothschild family built modern finance',
+                    detail: 'Market panics, monetary systems, billionaire histories, and economic crises structured for maximum watch time.',
+                  },
+                  {
+                    title: 'Ancient Mysteries & History',
+                    rpm: '$8 - $18 RPM',
+                    topic: 'The hidden cities beneath the Sahara Desert',
+                    detail: 'Forgotten civilizations, unsolved archaeology, and geopolitical history rendered with rich atmosphere.',
+                  },
+                  {
+                    title: 'Deep Science & Universe',
+                    rpm: '$10 - $22 RPM',
+                    topic: 'How deep-sea creatures survive extreme pressure',
+                    detail: 'Extreme physics, abyssal exploration, and cosmological scale with cinematic visual immersion.',
+                  },
+                  {
+                    title: 'Tech & AI Revolutions',
+                    rpm: '$12 - $28 RPM',
+                    topic: 'The AI revolution nobody saw coming',
+                    detail: 'Semiconductor breakthroughs, robotics frontiers, and algorithmic futures explained with clarity.',
+                  },
+                  {
+                    title: 'Indian History & Lore (Hindi)',
+                    rpm: '₹250 - ₹600 CPM',
+                    topic: 'प्राचीन सिंधु घाटी का अनसुलझा रहस्य',
+                    detail: 'Authentic Sarvam AI conversational Hindi voiceover with Sanskritized cadence and dramatic pacing.',
+                  },
+                  {
+                    title: 'Kids & Family Storybooks',
+                    rpm: 'High Volume Evergreen',
+                    topic: 'The Little Bear Who Wanted to Touch the Moon',
+                    detail: 'Bedtime adventures, moral fables, and animated rhymes with warm vibrant colors and child-safe storytelling.',
+                  },
+                ].map(niche => (
+                  <div key={niche.title} className="surface-raised flex flex-col justify-between p-5">
+                    <div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-primary">{niche.title}</span>
+                        <span className="rounded bg-[var(--app-brand-soft)] px-2 py-0.5 text-[10px] font-extrabold brand-text">{niche.rpm}</span>
+                      </div>
+                      <p className="mt-2 text-xs leading-5 text-secondary">{niche.detail}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setPromptInput(niche.topic); onNewJob(niche.topic); }}
+                      className="mt-4 flex items-center justify-between border-t border-theme pt-3 text-left text-xs font-bold brand-text hover:underline"
+                    >
+                      <span className="truncate pr-2">Try: {niche.topic}</span>
+                      <ArrowRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+              <div className="surface-card p-6">
+                <Images className="h-5 w-5 brand-text" aria-hidden="true" />
+                <h4 className="mt-4 text-base font-bold text-primary">Dual 16:9 YouTube Thumbnails</h4>
+                <p className="mt-2 text-xs leading-5 text-secondary">
+                  Every video automatically generates 2 contrasting YouTube-native thumbnails: Hook Hero (focal protagonist) and Climax Peak (dramatic high-tension reveal). Perfect for YouTube Studio A/B test experiments.
+                </p>
+              </div>
+
+              <div className="surface-card p-6">
+                <Camera className="h-5 w-5 brand-text" aria-hidden="true" />
+                <h4 className="mt-4 text-base font-bold text-primary">55%+ Audience Retention Motion</h4>
+                <p className="mt-2 text-xs leading-5 text-secondary">
+                  10 visual frames per minute paired with gentle Ken Burns motion (cinematic slow zoom, subtle pan, and soft crossfades) keeps YouTube viewers engaged past the critical 30-second retention cliff.
+                </p>
+              </div>
+
+              <div className="surface-card p-6">
+                <Mic2 className="h-5 w-5 brand-text" aria-hidden="true" />
+                <h4 className="mt-4 text-base font-bold text-primary">Authentic Neural Narration &amp; Subtitles</h4>
+                <p className="mt-2 text-xs leading-5 text-secondary">
+                  Human-sounding narration in English and conversational Hindi with auto-timed burned-in subtitles. Background music ducks under speech so every word cuts through clearly on mobile speakers.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'features' && (
           <div className="grid border-y border-theme md:grid-cols-2 lg:grid-cols-4">
             {[
@@ -360,6 +468,71 @@ export function Dashboard({
           </div>
         )}
 
+      </section>
+
+      {/* Dedicated Faceless YouTube Features Section */}
+      <section className="surface-card border-t-2 border-t-[var(--app-brand)] p-6 sm:p-9 lg:p-11" aria-label="Faceless YouTube creator features">
+        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+          <div className="max-w-2xl">
+            <p className="eyebrow mb-3">Built for Faceless YouTube Creators</p>
+            <h2 className="editorial-title text-2xl text-primary sm:text-3xl lg:text-4xl">
+              Everything your channel needs to publish, rank, and monetize.
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-secondary">
+              Stop juggling 5 different tools for scriptwriting, image generation, voiceover, captioning, and video editing. KinesisFlow unites the entire YouTube automation stack into one unified production workspace.
+            </p>
+          </div>
+          <button type="button" onClick={() => onNewJob()} className="btn-primary shrink-0 self-start md:self-auto">
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
+            Create Your First Video
+          </button>
+        </div>
+
+        <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+          {[
+            {
+              icon: TrendingUp,
+              title: 'High-RPM Niche Scripts',
+              detail: 'Researched 10-scene narrative scripts tailored for Finance, True Crime, History, Science, and Tech channels. High-hook intros designed to maximize view duration.',
+            },
+            {
+              icon: Images,
+              title: 'Dual 16:9 High-CTR Thumbnails',
+              detail: 'Two contrasting YouTube-native thumbnails (Hook Hero vs Climax Peak) formatted at 16:9 with saturated lighting and high-contrast subjects ready for YouTube Studio A/B testing.',
+            },
+            {
+              icon: Camera,
+              title: 'Cinematic Ken Burns Motion',
+              detail: 'Every image is enriched with smooth pan, zoom, and crossfade movement. Ten visual frames per minute prevent viewer drop-off and push average retention above 55%.',
+            },
+            {
+              icon: Mic2,
+              title: 'Neural Speech & Timed Subtitles',
+              detail: 'Human-like neural narration in English and conversational Hindi (via Sarvam AI), with burned-in animated subtitles and ducked ambient background music.',
+            },
+            {
+              icon: Layers3,
+              title: 'Script Review & Timeline Editor',
+              detail: 'Review and edit scripts before rendering starts. Re-generate any scene image, re-record audio, or adjust pacing without re-running the entire project or wasting credits.',
+            },
+            {
+              icon: Video,
+              title: '1080p Master MP4 Ready to Upload',
+              detail: 'Export pristine 1080p MP4 files formatted for YouTube long-form (16:9) or vertical shorts (9:16). Complete commercial ownership for AdSense and sponsorships.',
+            },
+          ].map(item => {
+            const Icon = item.icon;
+            return (
+              <div key={item.title} className="surface-raised p-5 sm:p-6">
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg brand-soft brand-text">
+                  <Icon className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <h3 className="mt-4 text-base font-bold text-primary">{item.title}</h3>
+                <p className="mt-2 text-xs leading-5 text-secondary">{item.detail}</p>
+              </div>
+            );
+          })}
+        </div>
       </section>
 
       <section className="surface-card flex flex-col items-start justify-between gap-5 border-l-2 border-l-[var(--app-brand)] p-6 sm:flex-row sm:items-center sm:p-8">
