@@ -470,11 +470,11 @@ export function Dashboard({
 
       </section>
 
-      {/* Dedicated Faceless YouTube Features Section */}
+      {/* Dedicated Faceless YouTube Features Section - Unslop Bento Grid */}
       <section className="surface-card border-t-2 border-t-[var(--app-brand)] p-6 sm:p-9 lg:p-11" aria-label="Faceless YouTube creator features">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <div className="max-w-2xl">
-            <p className="eyebrow mb-3">Built for Faceless YouTube Creators</p>
+            <p className="eyebrow mb-2">Built for Faceless YouTube Creators</p>
             <h2 className="editorial-title text-2xl text-primary sm:text-3xl lg:text-4xl">
               Everything your channel needs to publish, rank, and monetize.
             </h2>
@@ -488,59 +488,197 @@ export function Dashboard({
           </button>
         </div>
 
-        <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {[
-            {
-              icon: TrendingUp,
-              title: 'High-RPM Niche Scripts',
-              detail: 'Researched 10-scene narrative scripts tailored for Finance, True Crime, History, Science, and Tech channels. High-hook intros designed to maximize view duration.',
-            },
-            {
-              icon: Images,
-              title: 'Dual 16:9 High-CTR Thumbnails',
-              detail: 'Two contrasting YouTube-native thumbnails (Hook Hero vs Climax Peak) formatted at 16:9 with saturated lighting and high-contrast subjects ready for YouTube Studio A/B testing.',
-            },
-            {
-              icon: Camera,
-              title: 'Cinematic Ken Burns Motion',
-              detail: 'Every image is enriched with smooth pan, zoom, and crossfade movement. Ten visual frames per minute prevent viewer drop-off and push average retention above 55%.',
-            },
-            {
-              icon: Mic2,
-              title: 'Neural Speech & Timed Subtitles',
-              detail: 'Human-like neural narration in English and conversational Hindi (via Sarvam AI), with burned-in animated subtitles and ducked ambient background music.',
-            },
-            {
-              icon: Layers3,
-              title: 'Script Review & Timeline Editor',
-              detail: 'Review and edit scripts before rendering starts. Re-generate any scene image, re-record audio, or adjust pacing without re-running the entire project or wasting credits.',
-            },
-            {
-              icon: Video,
-              title: '1080p Master MP4 Ready to Upload',
-              detail: 'Export pristine 1080p MP4 files formatted for YouTube long-form (16:9) or vertical shorts (9:16). Complete commercial ownership for AdSense and sponsorships.',
-            },
-          ].map(item => {
-            const Icon = item.icon;
-            return (
-              <div key={item.title} className="surface-raised p-5 sm:p-6">
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg brand-soft brand-text">
-                  <Icon className="h-5 w-5" aria-hidden="true" />
+        {/* Asymmetrical Editorial Bento Grid */}
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
+          {/* Card 1: 2-Column Hero Anchor */}
+          <div className="flex flex-col justify-between rounded-2xl border border-theme bg-[var(--app-surface-soft)]/50 p-6 sm:p-7 transition-all hover:border-[var(--app-brand)]/40 hover:bg-[var(--app-surface-soft)] md:col-span-2">
+            <div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-mono text-[10px] font-bold tracking-widest text-secondary uppercase">
+                  01 · Narrative Architecture
                 </span>
-                <h3 className="mt-4 text-base font-bold text-primary">{item.title}</h3>
-                <p className="mt-2 text-xs leading-5 text-secondary">{item.detail}</p>
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg brand-soft brand-text">
+                  <TrendingUp className="h-4 w-4" aria-hidden="true" />
+                </span>
               </div>
-            );
-          })}
+
+              <h3 className="mt-4 text-lg sm:text-xl font-bold tracking-tight text-primary">
+                High-RPM Niche Scriptwriting Engine
+              </h3>
+              <p className="mt-2 text-xs sm:text-sm leading-relaxed text-secondary max-w-2xl">
+                Researched 10-scene narrative structures calibrated for high-monetization YouTube niches. Uses curiosity hooks, pattern interrupts, and tension escalation to push average viewer retention above 55%.
+              </p>
+            </div>
+
+            <div className="mt-6 border-t border-theme/60 pt-4 flex flex-wrap items-center gap-2">
+              <span className="rounded-md border border-theme bg-[var(--app-surface)] px-2.5 py-1 text-[11px] font-semibold text-primary">
+                Finance &amp; Investing ($18–$35 RPM)
+              </span>
+              <span className="rounded-md border border-theme bg-[var(--app-surface)] px-2.5 py-1 text-[11px] font-semibold text-primary">
+                True Crime &amp; Mystery
+              </span>
+              <span className="rounded-md border border-theme bg-[var(--app-surface)] px-2.5 py-1 text-[11px] font-semibold text-primary">
+                History &amp; Documentary
+              </span>
+              <span className="rounded-md border border-theme bg-[var(--app-surface)] px-2.5 py-1 text-[11px] font-semibold text-primary">
+                Deep Tech &amp; AI
+              </span>
+              <span className="ml-auto text-[11px] font-bold brand-text">
+                55%+ Target Retention
+              </span>
+            </div>
+          </div>
+
+          {/* Card 2: Dual A/B Thumbnails */}
+          <div className="flex flex-col justify-between rounded-2xl border border-theme bg-[var(--app-surface-soft)]/50 p-6 sm:p-7 transition-all hover:border-[var(--app-brand)]/40 hover:bg-[var(--app-surface-soft)]">
+            <div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-mono text-[10px] font-bold tracking-widest text-secondary uppercase">
+                  02 · Packaging &amp; CTR
+                </span>
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg brand-soft brand-text">
+                  <Images className="h-4 w-4" aria-hidden="true" />
+                </span>
+              </div>
+
+              <h3 className="mt-4 text-base sm:text-lg font-bold tracking-tight text-primary">
+                Dual 16:9 High-CTR Thumbnails
+              </h3>
+              <p className="mt-2 text-xs leading-relaxed text-secondary">
+                Two contrasting YouTube-native thumbnails (Hook Hero vs Climax Peak) formatted at 16:9 with saturated lighting and high-contrast subjects ready for YouTube Studio A/B testing.
+              </p>
+            </div>
+
+            <div className="mt-6 border-t border-theme/60 pt-4 flex items-center justify-between text-[11px] font-semibold text-secondary">
+              <span className="rounded bg-[var(--app-surface)] px-2 py-0.5 border border-theme text-primary">A/B Testing Ready</span>
+              <span className="font-mono text-[10px] text-secondary">16:9 Aspect Ratio</span>
+            </div>
+          </div>
+
+          {/* Card 3: Cinematic Motion */}
+          <div className="flex flex-col justify-between rounded-2xl border border-theme bg-[var(--app-surface-soft)]/50 p-6 sm:p-7 transition-all hover:border-[var(--app-brand)]/40 hover:bg-[var(--app-surface-soft)]">
+            <div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-mono text-[10px] font-bold tracking-widest text-secondary uppercase">
+                  03 · Cinematography
+                </span>
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg brand-soft brand-text">
+                  <Camera className="h-4 w-4" aria-hidden="true" />
+                </span>
+              </div>
+
+              <h3 className="mt-4 text-base sm:text-lg font-bold tracking-tight text-primary">
+                Cinematic Ken Burns Motion
+              </h3>
+              <p className="mt-2 text-xs leading-relaxed text-secondary">
+                Every image is enriched with smooth pan, zoom, and crossfade movement. Ten visual frames per minute prevent viewer drop-off and push average retention above 55%.
+              </p>
+            </div>
+
+            <div className="mt-6 border-t border-theme/60 pt-4 flex items-center justify-between text-[11px] font-semibold text-secondary">
+              <span className="rounded bg-[var(--app-surface)] px-2 py-0.5 border border-theme text-primary">10 visual cuts/min</span>
+              <span className="font-mono text-[10px] text-secondary">Zero Stillness</span>
+            </div>
+          </div>
+
+          {/* Card 4: Neural Voiceover & Subtitles */}
+          <div className="flex flex-col justify-between rounded-2xl border border-theme bg-[var(--app-surface-soft)]/50 p-6 sm:p-7 transition-all hover:border-[var(--app-brand)]/40 hover:bg-[var(--app-surface-soft)]">
+            <div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-mono text-[10px] font-bold tracking-widest text-secondary uppercase">
+                  04 · Audio &amp; Captions
+                </span>
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg brand-soft brand-text">
+                  <Mic2 className="h-4 w-4" aria-hidden="true" />
+                </span>
+              </div>
+
+              <h3 className="mt-4 text-base sm:text-lg font-bold tracking-tight text-primary">
+                Neural Speech &amp; Timed Subtitles
+              </h3>
+              <p className="mt-2 text-xs leading-relaxed text-secondary">
+                Human-like neural narration in English and conversational Hindi (via Sarvam AI), with burned-in animated subtitles and ducked ambient background music.
+              </p>
+            </div>
+
+            <div className="mt-6 border-t border-theme/60 pt-4 flex items-center justify-between text-[11px] font-semibold text-secondary">
+              <span className="rounded bg-[var(--app-surface)] px-2 py-0.5 border border-theme text-primary">English &amp; Sarvam AI Hindi</span>
+              <span className="font-mono text-[10px] text-secondary">Ducked BGM</span>
+            </div>
+          </div>
+
+          {/* Card 5: Script Review & Timeline Editor */}
+          <div className="flex flex-col justify-between rounded-2xl border border-theme bg-[var(--app-surface-soft)]/50 p-6 sm:p-7 transition-all hover:border-[var(--app-brand)]/40 hover:bg-[var(--app-surface-soft)]">
+            <div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-mono text-[10px] font-bold tracking-widest text-secondary uppercase">
+                  05 · Pre-Render Control
+                </span>
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg brand-soft brand-text">
+                  <Layers3 className="h-4 w-4" aria-hidden="true" />
+                </span>
+              </div>
+
+              <h3 className="mt-4 text-base sm:text-lg font-bold tracking-tight text-primary">
+                Script Review &amp; Timeline Editor
+              </h3>
+              <p className="mt-2 text-xs leading-relaxed text-secondary">
+                Review and edit scripts before rendering starts. Re-generate any scene image, re-record audio, or adjust pacing without re-running the entire project or wasting credits.
+              </p>
+            </div>
+
+            <div className="mt-6 border-t border-theme/60 pt-4 flex items-center justify-between text-[11px] font-semibold text-secondary">
+              <span className="rounded bg-[var(--app-surface)] px-2 py-0.5 border border-theme text-primary">Pre-Flight Review</span>
+              <span className="font-mono text-[10px] text-secondary">Zero Credit Loss</span>
+            </div>
+          </div>
+
+          {/* Card 6: 3-Column Full Width Footer Card */}
+          <div className="flex flex-col justify-between rounded-2xl border border-theme bg-[var(--app-surface-soft)]/50 p-6 sm:p-7 transition-all hover:border-[var(--app-brand)]/40 hover:bg-[var(--app-surface-soft)] md:col-span-2 lg:col-span-3">
+            <div className="grid gap-5 lg:grid-cols-[1.5fr_1fr] lg:items-center">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[10px] font-bold tracking-widest text-secondary uppercase">
+                    06 · Production Master &amp; Ownership
+                  </span>
+                </div>
+                <h3 className="mt-3 text-lg sm:text-xl font-bold tracking-tight text-primary">
+                  1080p Master MP4 Ready to Upload &amp; Monetize
+                </h3>
+                <p className="mt-2 text-xs sm:text-sm leading-relaxed text-secondary max-w-xl">
+                  Export pristine 1080p MP4 files formatted for YouTube long-form (16:9) or vertical shorts (9:16). Complete commercial ownership for AdSense monetization, sponsorships, and client contracts.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="rounded-xl border border-theme bg-[var(--app-surface)] p-3">
+                  <p className="text-[11px] font-extrabold text-primary flex items-center gap-1.5">
+                    <Video className="h-3.5 w-3.5 brand-text" /> 16:9 Landscape
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-secondary">Full YouTube long-form video essays</p>
+                </div>
+                <div className="rounded-xl border border-theme bg-[var(--app-surface)] p-3">
+                  <p className="text-[11px] font-extrabold text-primary flex items-center gap-1.5">
+                    <Film className="h-3.5 w-3.5 brand-text" /> 9:16 Vertical
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-secondary">YouTube Shorts, TikTok &amp; IG Reels</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 border-t border-theme/60 pt-3 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+              <span className="font-semibold text-secondary">Format: 1080p H.264 MP4 master with synchronized audio and captions</span>
+              <span className="rounded bg-[var(--app-brand-soft)] px-2 py-0.5 font-bold brand-text text-[10px] uppercase tracking-wide">
+                100% Commercial AdSense License
+              </span>
+            </div>
+          </div>
         </div>
       </section>
 
       <section className="surface-card flex flex-col items-start justify-between gap-5 border-l-2 border-l-[var(--app-brand)] p-6 sm:flex-row sm:items-center sm:p-8">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="eyebrow">Flexible production pricing</span>
-            <span className="rounded bg-[var(--app-brand-soft)] px-2 py-0.5 text-[10px] font-extrabold brand-text">USD ($) &amp; INR (₹)</span>
-          </div>
+          <p className="eyebrow mb-1">Flexible production pricing</p>
           <h2 className="editorial-title mt-2 text-2xl sm:text-3xl text-primary">150 production credits for $5 (₹499).</h2>
           <p className="mt-2 text-xs sm:text-sm text-secondary max-w-xl">
             Choose from Creator ($5), Creator Pro ($19), or Studio ($39). Includes animated videos, real footage, and high-quality voice cloning on Pro &amp; Studio plans. Pay via Cards or UPI in INR or USD.
