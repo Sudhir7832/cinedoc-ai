@@ -541,9 +541,9 @@ export function Dashboard({
             <span className="eyebrow">Flexible production pricing</span>
             <span className="rounded bg-[var(--app-brand-soft)] px-2 py-0.5 text-[10px] font-extrabold brand-text">USD ($) &amp; INR (₹)</span>
           </div>
-          <h2 className="editorial-title mt-2 text-2xl sm:text-3xl text-primary">150 production credits for $11 (₹999).</h2>
+          <h2 className="editorial-title mt-2 text-2xl sm:text-3xl text-primary">150 production credits for $5 (₹499).</h2>
           <p className="mt-2 text-xs sm:text-sm text-secondary max-w-xl">
-            Choose from Creator ($11), Creator Pro ($24), or Studio ($49). Includes animated videos, real footage, and high-quality voice cloning on Pro &amp; Studio plans. Pay via Cards or UPI in INR or USD.
+            Choose from Creator ($5), Creator Pro ($19), or Studio ($39). Includes animated videos, real footage, and high-quality voice cloning on Pro &amp; Studio plans. Pay via Cards or UPI in INR or USD.
           </p>
         </div>
         <button type="button" onClick={onOpenPricing} className="btn-primary shrink-0">
