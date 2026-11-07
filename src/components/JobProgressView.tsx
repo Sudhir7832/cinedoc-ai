@@ -21,7 +21,8 @@ import {
   Coffee,
   X,
   FileText,
-  Edit3
+  Edit3,
+  Square
 } from 'lucide-react';
 import { DocumentaryJob } from '@/lib/types';
 import { TimelineEditorModal } from '@/components/TimelineEditorModal';
@@ -62,6 +63,7 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
   const [approveError, setApproveError] = useState<string | null>(null);
   const [editingSceneNum, setEditingSceneNum] = useState<number | null>(null);
   const [editedNarrations, setEditedNarrations] = useState<Record<number, string>>({});
+  const [isStopping, setIsStopping] = useState(false);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -253,6 +255,28 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
     }
   };
 
+  const handleStopJob = async () => {
+    if (!job) return;
+    if (!confirm('Are you sure you want to stop this production? Any unused reserved credits will be released back to your account.')) {
+      return;
+    }
+    setIsStopping(true);
+    try {
+      const res = await fetch(`/api/jobs/${job.id}/cancel`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to stop production');
+      }
+      if (data.job) {
+        setJob(data.job);
+      }
+    } catch (err: unknown) {
+      alert(`Could not stop production: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsStopping(false);
+    }
+  };
+
   if (!job) {
     return (
       <div className="max-w-4xl mx-auto py-16 px-4 text-center">
@@ -265,11 +289,13 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
 
   const isFailed = job.status === 'failed';
   const isCompleted = job.status === 'completed';
+  const isCancelled = job.status === 'cancelled';
   const isReviewingScript = job.status === 'reviewing_script';
 
   const getStageStatus = (stageKey: string) => {
     if (isCompleted) return 'completed';
     if (isFailed && job.progress.stage === stageKey) return 'failed';
+    if (isCancelled && job.progress.stage === stageKey) return 'failed';
     if (isReviewingScript) {
       if (stageKey === 'writing_script') return 'completed';
       if (stageKey === 'generating_images') return 'active';
@@ -338,6 +364,34 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
             </button>
           )}
 
+          {!isCompleted && !isFailed && !isCancelled && (
+            <button
+              type="button"
+              onClick={handleStopJob}
+              disabled={isStopping}
+              className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-gray-700 bg-gray-900 hover:bg-rose-950/40 hover:border-rose-800 text-gray-300 hover:text-rose-300 font-semibold text-xs transition cursor-pointer disabled:opacity-50"
+              title="Stop video generation and release unused credits"
+            >
+              {isStopping ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-rose-400" />
+              ) : (
+                <Square className="w-3 h-3 fill-rose-500 text-rose-500" />
+              )}
+              <span>{isStopping ? 'Stopping...' : 'Stop Production'}</span>
+            </button>
+          )}
+
+          {isCancelled && (
+            <button
+              onClick={handleRetry}
+              disabled={isRetrying}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs transition shadow-lg cursor-pointer"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRetrying ? 'animate-spin' : ''}`} />
+              <span>Resume Production</span>
+            </button>
+          )}
+
           {isFailed && (
             <button
               onClick={handleRetry}
@@ -370,16 +424,28 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
         <div className="flex items-center justify-between mb-6">
           <div>
             <h3 className="text-base font-semibold text-white flex items-center gap-2">
-              {!isCompleted && !isFailed && <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />}
+              {!isCompleted && !isFailed && !isCancelled && <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />}
               {isCompleted && <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
-              {isFailed && <AlertTriangle className="w-5 h-5 text-rose-400" />}
+              {(isFailed || isCancelled) && <AlertTriangle className="w-5 h-5 text-rose-400" />}
               <span>{job.progress.stepLabel || 'Processing documentary generation...'}</span>
             </h3>
             <p className="text-xs text-gray-400 mt-1">
               Language: {job.language} • Format: {job.aspectRatio || '16:9'} • Voice: {job.voice} • Subtitles: {job.includeSubtitles === false ? 'Off' : 'On'} • {job.durationMinutes * 10} scenes
             </p>
           </div>
-          <div className="text-right">
+          <div className="text-right flex items-center gap-3">
+            {!isCompleted && !isFailed && !isCancelled && (
+              <button
+                type="button"
+                onClick={handleStopJob}
+                disabled={isStopping}
+                className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-lg border border-gray-800 bg-gray-900/80 hover:bg-rose-950/40 hover:border-rose-800/60 text-gray-400 hover:text-rose-400 text-xs font-semibold transition cursor-pointer"
+                title="Stop generation"
+              >
+                <Square className="w-2.5 h-2.5 fill-rose-500 text-rose-500" />
+                <span>Stop</span>
+              </button>
+            )}
             <span className="text-2xl font-bold font-mono text-amber-400">
               {job.progress.percent}%
             </span>
@@ -392,6 +458,8 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
             className={`h-full rounded-full transition-all duration-700 ease-out ${
               isFailed
                 ? 'bg-rose-500'
+                : isCancelled
+                ? 'bg-amber-600'
                 : isCompleted
                 ? 'bg-gradient-to-r from-emerald-500 to-teal-400'
                 : 'bg-gradient-to-r from-amber-500 to-orange-500'
