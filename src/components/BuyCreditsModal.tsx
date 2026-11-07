@@ -118,6 +118,23 @@ export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpe
       .catch(() => setError('Pricing could not be loaded. Please try again.'));
   }, [isOpen, user?.role]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const selectedPack = packs.find(pack => pack.id === selectedPackId) || packs[0];
@@ -244,61 +261,104 @@ export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpe
 
   const handleCurrencySelect = (option: 'USD' | 'INR') => {
     setCurrency(option);
+    if (sandboxAvailable && gateway === 'test') return;
     if (option === 'INR') {
-      if (gateway !== 'dodo') setGateway(razorpayAvailable ? 'razorpay' : dodoAvailable ? 'dodo' : 'test');
-    }
-    if (option === 'USD' && gateway === 'razorpay') {
-      setGateway(dodoAvailable ? 'dodo' : stripeAvailable ? 'stripe' : 'test');
+      if (razorpayAvailable) {
+        setGateway('razorpay');
+      } else if (dodoAvailable) {
+        setGateway('dodo');
+      }
+    } else {
+      if (stripeAvailable) {
+        setGateway('stripe');
+      } else if (dodoAvailable) {
+        setGateway('dodo');
+      }
     }
   };
 
   return (
-    <div className="modal-scrim fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-3 sm:p-4" role="presentation">
-      <div className="modal-panel my-4 sm:my-6 w-full max-w-5xl overflow-hidden rounded-[2rem]" role="dialog" aria-modal="true" aria-labelledby="pricing-title">
-        {/* Header */}
-        <div className="flex items-start justify-between border-b border-theme px-5 py-5 sm:px-8 sm:py-6">
-          <div className="flex items-start gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl brand-soft">
-              <Coins className="h-5 w-5" aria-hidden="true" />
-            </span>
-            <div>
-              <p className="eyebrow">Flexible production credits</p>
-              <h2 id="pricing-title" className="mt-1 text-xl font-black tracking-[-0.035em] text-primary sm:text-2xl">Choose your production capacity</h2>
-              <p className="mt-1 text-xs leading-5 text-secondary">One-time credit pack - pay in USD ($) or INR (₹) via Cards &amp; UPI.</p>
+    <div
+      className="modal-scrim fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 md:p-6 overflow-hidden animate-in fade-in duration-200"
+      role="presentation"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className="modal-panel relative flex flex-col w-full max-w-5xl max-h-[92dvh] sm:max-h-[88vh] overflow-hidden rounded-2xl sm:rounded-[2rem] shadow-2xl animate-in zoom-in-95 duration-200 bg-[var(--app-surface)]"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pricing-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Pinned Top: Header & Currency Controls (Never scrolls off-screen) */}
+        <div className="shrink-0 border-b border-theme bg-[var(--app-surface)] shadow-sm">
+          {/* Header row */}
+          <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-8 sm:py-4">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <span className="flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl brand-soft">
+                <Coins className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-secondary">Production Credits</p>
+                  <span className="rounded bg-[var(--app-brand-soft)] px-1.5 py-0.5 text-[9px] font-black brand-text">Pay USD / INR</span>
+                </div>
+                <h2 id="pricing-title" className="truncate text-base sm:text-xl font-black tracking-[-0.035em] text-primary">
+                  Choose your production capacity
+                </h2>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="icon-button shrink-0 !h-9 !w-9 sm:!h-10 sm:!w-10"
+              aria-label="Close pricing dialog"
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+
+          {/* Currency Switcher Bar (Always visible at top of modal on both desktop & mobile) */}
+          <div className="flex items-center justify-between gap-2 border-t border-theme/60 bg-[var(--app-surface-soft)] px-4 py-2 sm:px-8 sm:py-2.5">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="text-xs font-black uppercase tracking-wider text-primary">Currency:</span>
+              <span className="text-[11px] font-semibold text-secondary hidden xs:inline sm:inline">
+                {currency === 'USD' ? 'Pay in USD ($) via Cards & Stripe' : 'Pay in INR (₹) via UPI & Indian Cards'}
+              </span>
+            </div>
+            <div className="flex items-center rounded-xl border border-theme bg-[var(--app-surface)] p-1 shadow-sm" aria-label="Select currency">
+              <button
+                type="button"
+                onClick={() => handleCurrencySelect('USD')}
+                className={`min-h-7 sm:min-h-8 rounded-lg px-3.5 sm:px-4 text-xs font-black transition-all ${
+                  currency === 'USD'
+                    ? 'bg-[var(--app-brand)] text-white shadow-sm ring-1 ring-[var(--app-brand)]'
+                    : 'text-secondary hover:text-primary hover:bg-[var(--app-surface-soft)]'
+                }`}
+                aria-pressed={currency === 'USD'}
+              >
+                USD ($)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleCurrencySelect('INR')}
+                className={`min-h-7 sm:min-h-8 rounded-lg px-3.5 sm:px-4 text-xs font-black transition-all ${
+                  currency === 'INR'
+                    ? 'bg-[var(--app-brand)] text-white shadow-sm ring-1 ring-[var(--app-brand)]'
+                    : 'text-secondary hover:text-primary hover:bg-[var(--app-surface-soft)]'
+                }`}
+                aria-pressed={currency === 'INR'}
+              >
+                INR (₹)
+              </button>
             </div>
           </div>
-          <button type="button" onClick={onClose} className="icon-button shrink-0" aria-label="Close pricing dialog">
-            <X className="h-4 w-4" aria-hidden="true" />
-          </button>
         </div>
 
-        {/* Sticky Currency Bar - Stays docked on mobile scroll */}
-        <div className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-theme bg-[var(--app-surface)]/95 px-5 py-3 backdrop-blur sm:px-8 shadow-sm">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-black uppercase tracking-wider text-primary">Currency:</span>
-            <span className="hidden text-[11px] font-semibold text-secondary sm:inline">Pay in USD ($) or INR (₹ via UPI/Cards)</span>
-          </div>
-          <div className="flex items-center rounded-xl border border-theme bg-[var(--app-surface-soft)] p-1 shadow-sm" aria-label="Select currency">
-            <button
-              type="button"
-              onClick={() => handleCurrencySelect('USD')}
-              className={`min-h-8 rounded-lg px-3.5 text-xs font-black transition-all ${currency === 'USD' ? 'bg-[var(--app-brand)] text-white shadow-sm' : 'text-secondary hover:text-primary'}`}
-              aria-pressed={currency === 'USD'}
-            >
-              USD ($)
-            </button>
-            <button
-              type="button"
-              onClick={() => handleCurrencySelect('INR')}
-              className={`min-h-8 rounded-lg px-3.5 text-xs font-black transition-all ${currency === 'INR' ? 'bg-[var(--app-brand)] text-white shadow-sm' : 'text-secondary hover:text-primary'}`}
-              aria-pressed={currency === 'INR'}
-            >
-              INR (₹)
-            </button>
-          </div>
-        </div>
-
-        <div className="p-5 sm:p-8">
+        {/* Scrollable Content Body (Fully scrollable with smooth touch & wheel) */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-8 overscroll-contain">
           <div className="mb-6 flex flex-col justify-between gap-3 rounded-2xl surface-soft p-4 sm:flex-row sm:items-center">
             <div>
               <p className="text-xs font-semibold text-secondary">Current balance</p>
