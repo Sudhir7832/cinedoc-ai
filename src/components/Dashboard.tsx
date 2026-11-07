@@ -599,7 +599,7 @@ export function Dashboard({
 
                   <div className="rounded-lg border border-neutral-800 bg-[#17181e] p-3 text-neutral-200 leading-relaxed font-sans text-xs">
                     <p className="text-[10px] font-bold text-amber-400 font-mono mb-1">NARRATION (DEEP DOCUMENTARY):</p>
-                    &ldquo;On December 24, 1995, three men walked into the world&rsquo;s most impenetrable underground vault. They walked out four hours later with $160 million—and didn&rsquo;t trigger a single alarm.&rdquo;
+                    &ldquo;On December 24, 1995, three men walked into the world&rsquo;s most impenetrable underground vault. They walked out four hours later with $160 million and didn&rsquo;t trigger a single alarm.&rdquo;
                   </div>
 
                   <div className="flex flex-wrap items-center justify-between gap-2 pt-2 text-[10px] text-neutral-400 border-t border-neutral-800/80">
