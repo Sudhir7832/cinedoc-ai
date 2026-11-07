@@ -223,9 +223,9 @@ export function Dashboard({
 
       <section className="surface-card grid grid-cols-2 lg:grid-cols-4" aria-label="Studio summary">
         {[
-          { label: 'Total productions', value: jobs.length, icon: Film },
-          { label: 'Completed films', value: completedCount, icon: CheckCircle2 },
-          { label: 'In production', value: inProgressCount, icon: Clock3 },
+          { label: 'Total productions', value: user ? jobs.length : '1000+', icon: Film },
+          { label: 'Completed films', value: user ? completedCount : '700+', icon: CheckCircle2 },
+          { label: 'In production', value: user ? inProgressCount : '70+', icon: Clock3 },
           { label: 'Languages listed', value: '6', icon: Languages },
         ].map(metric => {
           const Icon = metric.icon;
