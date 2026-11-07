@@ -1,3 +1,4 @@
+
 import type { Metadata, Viewport } from 'next';
 import { Inter, Newsreader } from 'next/font/google';
 import Script from 'next/script';
@@ -74,16 +75,31 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${inter.variable} ${newsreader.variable}`} suppressHydrationWarning>
       <head>
-        <script async src="https://www.googletagmanager.com/gtm.js?id=GTM-53JXZ5LW" />
+        {/* Google tag (gtag.js) for GA4 Measurement ID: G-Z7HJRVY5CP */}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-Z7HJRVY5CP" />
         <script
           dangerouslySetInnerHTML={{
             __html: `window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());`,
+gtag('js', new Date());
+gtag('config', 'G-Z7HJRVY5CP', {
+  page_path: window.location.pathname,
+});`,
           }}
         />
+        {/* Google Tag Manager container */}
+        <script async src="https://www.googletagmanager.com/gtm.js?id=GTM-53JXZ5LW" />
       </head>
       <body className="min-h-full">
+        {/* Google Tag Manager (noscript) */}
+        <noscript>
+          <iframe
+            src="https://www.googletagmanager.com/ns.html?id=GTM-53JXZ5LW"
+            height="0"
+            width="0"
+            style={{ display: 'none', visibility: 'hidden' }}
+          />
+        </noscript>
         <Script id="kinesisflow-theme" strategy="beforeInteractive">{themeScript}</Script>
         <AuthProviderWrapper>
           {children}
