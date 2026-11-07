@@ -38,6 +38,48 @@ interface RazorpayConstructor {
 
 type PaymentGateway = 'test' | 'stripe' | 'razorpay' | 'dodo';
 
+const PLAN_FEATURES: Record<string, { badge: string; items: { text: string; highlight?: boolean }[] }> = {
+  pack_creator: {
+    badge: 'Creator Starter',
+    items: [
+      { text: '150 production credits (~15 min of 1080p video)' },
+      { text: 'Full documentary & Kids video pipeline' },
+      { text: 'Dual 16:9 catchy YouTube thumbnails' },
+      { text: 'Cinematic Ken Burns camera motion' },
+      { text: 'Neural voiceover in English & Sarvam AI Hindi' },
+      { text: 'Burned-in timed animated subtitles' },
+      { text: '1080p MP4 download with commercial rights' },
+      { text: 'Timeline scene editor & script review' },
+    ],
+  },
+  pack_pro: {
+    badge: 'Most Popular for Channels',
+    items: [
+      { text: '400 production credits (~40 min of video)' },
+      { text: 'Animated videos with character & kinetic motion', highlight: true },
+      { text: 'Real footage & cinematic documentary visuals', highlight: true },
+      { text: 'High quality custom voice cloning & neural speech', highlight: true },
+      { text: 'Priority production rendering queue (2x faster)' },
+      { text: 'Dual 16:9 widescreen & 9:16 vertical Shorts exports' },
+      { text: 'Ducked audio mixing with ambient background music' },
+      { text: 'Full scene script editor & regenerations' },
+    ],
+  },
+  pack_studio: {
+    badge: 'Best Value for Studios & Teams',
+    items: [
+      { text: '1,000 production credits (~100 min of video)' },
+      { text: 'Full animated videos suite & stylized animations', highlight: true },
+      { text: 'Real footage documentary visual engine', highlight: true },
+      { text: 'High quality custom voice cloning with emotion tuning', highlight: true },
+      { text: 'VIP instant render queue priority' },
+      { text: 'Full commercial broadcast & AdSense license' },
+      { text: 'Unlimited scene regenerations without project loss' },
+      { text: 'Dedicated priority creator support' },
+    ],
+  },
+};
+
 export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpenAuth }: BuyCreditsModalProps) {
   const [packs, setPacks] = useState<PricingPack[]>([]);
   const [selectedPackId, setSelectedPackId] = useState('pack_creator');
@@ -200,9 +242,20 @@ export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpe
     }
   };
 
+  const handleCurrencySelect = (option: 'USD' | 'INR') => {
+    setCurrency(option);
+    if (option === 'INR') {
+      if (gateway !== 'dodo') setGateway(razorpayAvailable ? 'razorpay' : dodoAvailable ? 'dodo' : 'test');
+    }
+    if (option === 'USD' && gateway === 'razorpay') {
+      setGateway(dodoAvailable ? 'dodo' : stripeAvailable ? 'stripe' : 'test');
+    }
+  };
+
   return (
-    <div className="modal-scrim fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4" role="presentation">
-      <div className="modal-panel my-6 w-full max-w-5xl overflow-hidden rounded-[2rem]" role="dialog" aria-modal="true" aria-labelledby="pricing-title">
+    <div className="modal-scrim fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-3 sm:p-4" role="presentation">
+      <div className="modal-panel my-4 sm:my-6 w-full max-w-5xl overflow-hidden rounded-[2rem]" role="dialog" aria-modal="true" aria-labelledby="pricing-title">
+        {/* Header */}
         <div className="flex items-start justify-between border-b border-theme px-5 py-5 sm:px-8 sm:py-6">
           <div className="flex items-start gap-3">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl brand-soft">
@@ -211,12 +264,38 @@ export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpe
             <div>
               <p className="eyebrow">Flexible production credits</p>
               <h2 id="pricing-title" className="mt-1 text-xl font-black tracking-[-0.035em] text-primary sm:text-2xl">Choose your production capacity</h2>
-              <p className="mt-1 text-xs leading-5 text-secondary">Choose a one-time credit pack for your production account.</p>
+              <p className="mt-1 text-xs leading-5 text-secondary">One-time credit pack - pay in USD ($) or INR (₹) via Cards &amp; UPI.</p>
             </div>
           </div>
           <button type="button" onClick={onClose} className="icon-button shrink-0" aria-label="Close pricing dialog">
             <X className="h-4 w-4" aria-hidden="true" />
           </button>
+        </div>
+
+        {/* Sticky Currency Bar - Stays docked on mobile scroll */}
+        <div className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-theme bg-[var(--app-surface)]/95 px-5 py-3 backdrop-blur sm:px-8 shadow-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-black uppercase tracking-wider text-primary">Currency:</span>
+            <span className="hidden text-[11px] font-semibold text-secondary sm:inline">Pay in USD ($) or INR (₹ via UPI/Cards)</span>
+          </div>
+          <div className="flex items-center rounded-xl border border-theme bg-[var(--app-surface-soft)] p-1 shadow-sm" aria-label="Select currency">
+            <button
+              type="button"
+              onClick={() => handleCurrencySelect('USD')}
+              className={`min-h-8 rounded-lg px-3.5 text-xs font-black transition-all ${currency === 'USD' ? 'bg-[var(--app-brand)] text-white shadow-sm' : 'text-secondary hover:text-primary'}`}
+              aria-pressed={currency === 'USD'}
+            >
+              USD ($)
+            </button>
+            <button
+              type="button"
+              onClick={() => handleCurrencySelect('INR')}
+              className={`min-h-8 rounded-lg px-3.5 text-xs font-black transition-all ${currency === 'INR' ? 'bg-[var(--app-brand)] text-white shadow-sm' : 'text-secondary hover:text-primary'}`}
+              aria-pressed={currency === 'INR'}
+            >
+              INR (₹)
+            </button>
+          </div>
         </div>
 
         <div className="p-5 sm:p-8">
@@ -228,26 +307,11 @@ export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpe
                 {Boolean(user?.reservedCredits) && <span className="ml-1 font-medium text-secondary">· {user?.reservedCredits} reserved</span>}
               </p>
             </div>
-            <div className="flex w-fit items-center rounded-xl border border-theme bg-[var(--app-surface)] p-1" aria-label="Currency">
-              {(['USD', 'INR'] as const).map(option => (
-                <button
-                  type="button"
-                  key={option}
-                  onClick={() => {
-                    setCurrency(option);
-                    if (option === 'INR') {
-                      if (gateway !== 'dodo') setGateway(razorpayAvailable ? 'razorpay' : dodoAvailable ? 'dodo' : 'test');
-                    }
-                    if (option === 'USD' && gateway === 'razorpay') {
-                      setGateway(dodoAvailable ? 'dodo' : stripeAvailable ? 'stripe' : 'test');
-                    }
-                  }}
-                  className={`min-h-9 rounded-lg px-3 text-xs font-bold transition-colors ${currency === option ? 'bg-[var(--app-text)] text-[var(--app-surface)]' : 'text-secondary hover:text-[var(--app-text)]'}`}
-                  aria-pressed={currency === option}
-                >
-                  {option === 'USD' ? 'USD $' : 'INR ₹'}
-                </button>
-              ))}
+            <div className="flex items-center gap-2 text-xs text-secondary font-medium">
+              <span>Prices displayed in</span>
+              <span className="font-extrabold text-primary brand-soft px-2 py-0.5 rounded-md">
+                {currency === 'USD' ? 'USD ($)' : 'INR (₹)'}
+              </span>
             </div>
           </div>
 
@@ -258,34 +322,86 @@ export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpe
             </div>
           )}
 
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid gap-5 lg:grid-cols-3">
             {packs.map(pack => {
               const selected = selectedPack?.id === pack.id;
-              const price = currency === 'INR' ? `₹${pack.priceInr}` : `$${pack.priceUsd}`;
+              const mainPrice = currency === 'INR' ? `₹${pack.priceInr.toLocaleString()}` : `$${pack.priceUsd}`;
+              const altPrice = currency === 'INR' ? `$${pack.priceUsd} USD` : `₹${pack.priceInr.toLocaleString()} INR`;
+              const planFeatures = PLAN_FEATURES[pack.id] || {
+                badge: pack.name,
+                items: [
+                  { text: `${pack.credits} production credits` },
+                  { text: 'Full video creation pipeline' },
+                  { text: 'Dual 16:9 YouTube thumbnails' },
+                  { text: '1080p MP4 download' },
+                ],
+              };
+
               return (
                 <div key={pack.id} className="relative pt-3">
                   {pack.popular && (
-                    <span className="absolute right-4 top-0 z-10 rounded-full bg-[var(--app-text)] px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.12em] text-[var(--app-surface)] shadow-sm">Most popular</span>
+                    <span className="absolute right-4 top-0 z-10 rounded-full bg-[var(--app-text)] px-3 py-1 text-[9px] font-extrabold uppercase tracking-[0.12em] text-[var(--app-surface)] shadow-md">
+                      Most popular
+                    </span>
                   )}
                   <button
                     type="button"
                     onClick={() => setSelectedPackId(pack.id)}
-                    className={`flex min-h-[260px] w-full flex-col rounded-3xl border p-5 text-left transition-[border-color,box-shadow,background-color] ${selected ? 'border-[var(--app-brand)] bg-[var(--app-brand-soft)] shadow-[0_0_0_1px_var(--app-brand)]' : 'border-theme bg-[var(--app-surface)] hover:border-[var(--app-text-muted)]'}`}
+                    className={`flex h-full w-full flex-col justify-between rounded-3xl border p-5 text-left transition-all ${selected ? 'border-[var(--app-brand)] bg-[var(--app-brand-soft)]/50 shadow-[0_0_0_2px_var(--app-brand)]' : 'border-theme bg-[var(--app-surface)] hover:border-[var(--app-text-muted)]'}`}
                     aria-pressed={selected}
                   >
-                    <span className="flex items-center justify-between gap-3">
-                      <span className="text-sm font-extrabold text-primary">{pack.name}</span>
-                      {selected && <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--app-brand)] text-white"><Check className="h-3.5 w-3.5" aria-hidden="true" /></span>}
-                    </span>
-                    <span className="mt-6 flex items-end gap-1.5">
-                      <span className="text-4xl font-black tracking-[-0.055em] text-primary">{price}</span>
-                      <span className="pb-1 text-xs font-medium text-secondary">one-time</span>
-                    </span>
-                    <span className="mt-4 flex items-center gap-2 text-sm font-extrabold brand-text">
-                      <Coins className="h-4 w-4" aria-hidden="true" /> {pack.credits} credits
-                    </span>
-                    <p className="mt-3 text-xs leading-5 text-secondary">{pack.description}</p>
-                    <span className="mt-auto border-t border-theme pt-4 text-[11px] font-semibold text-secondary">One-time production credit pack</span>
+                    <div>
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <span className="text-base font-extrabold text-primary">{pack.name}</span>
+                          <span className="block text-[11px] font-bold brand-text">{planFeatures.badge}</span>
+                        </div>
+                        {selected ? (
+                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--app-brand)] text-white shadow-sm">
+                            <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                          </span>
+                        ) : (
+                          <span className="h-6 w-6 rounded-full border border-theme" />
+                        )}
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap items-baseline gap-2">
+                        <span className="text-3xl sm:text-4xl font-black tracking-[-0.055em] text-primary">{mainPrice}</span>
+                        <span className="text-xs font-bold text-secondary">one-time</span>
+                        <span className="text-[11px] font-semibold text-secondary">({altPrice})</span>
+                      </div>
+
+                      <div className="mt-3 inline-flex items-center gap-1.5 rounded-lg brand-soft px-2.5 py-1 text-xs font-extrabold brand-text">
+                        <Coins className="h-3.5 w-3.5" aria-hidden="true" /> {pack.credits} credits (~{pack.videoMinutes || Math.round(pack.credits / 10)} min video)
+                      </div>
+
+                      <p className="mt-3 text-xs leading-5 text-secondary">{pack.description}</p>
+
+                      {/* Feature checklist */}
+                      <div className="mt-5 space-y-2 border-t border-theme pt-4">
+                        <p className="text-[10px] font-black uppercase tracking-wider text-secondary">What is included:</p>
+                        <ul className="space-y-2">
+                          {planFeatures.items.map((item, idx) => (
+                            <li key={idx} className={`flex items-start gap-2 text-xs leading-5 ${item.highlight ? 'font-bold text-primary' : 'text-secondary'}`}>
+                              <Check className={`h-4 w-4 shrink-0 mt-0.5 ${item.highlight ? 'text-[var(--app-brand)] stroke-[2.5]' : 'text-emerald-500'}`} />
+                              <span>
+                                {item.text}
+                                {item.highlight && (
+                                  <span className="ml-1.5 inline-block rounded bg-[var(--app-brand-soft)] px-1.5 py-0.2 text-[9px] font-black brand-text uppercase tracking-wide">
+                                    PRO
+                                  </span>
+                                )}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div className="mt-6 border-t border-theme pt-3 text-[11px] font-semibold text-secondary flex items-center justify-between">
+                      <span>One-time credit pack</span>
+                      <span className="brand-text font-bold text-xs">{selected ? 'Selected Plan' : 'Click to Select'}</span>
+                    </div>
                   </button>
                 </div>
               );

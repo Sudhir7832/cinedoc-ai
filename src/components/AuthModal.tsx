@@ -172,14 +172,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
               <div>
                 <label className="mb-1.5 block text-xs font-semibold text-primary">Your name</label>
                 <div className="relative">
-                  <UserIcon className="absolute left-3.5 top-3.5 h-4 w-4 text-secondary" />
+                  <UserIcon className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-secondary" />
                   <input
                     type="text"
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. Alex Miller"
-                    className="app-field pl-10 pr-4 text-sm"
+                    className="app-field !pl-11 pr-4 text-sm"
+                    style={{ paddingLeft: '2.75rem' }}
                   />
                 </div>
               </div>
@@ -188,14 +189,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             <div>
               <label className="mb-1.5 block text-xs font-semibold text-primary">Email address</label>
               <div className="relative">
-                <Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-secondary" />
+                <Mail className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-secondary" />
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
-                  className="app-field pl-10 pr-4 text-sm"
+                  className="app-field !pl-11 pr-4 text-sm"
+                  style={{ paddingLeft: '2.75rem' }}
                 />
               </div>
             </div>
@@ -203,14 +205,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             <div>
               <label className="mb-1.5 block text-xs font-semibold text-primary">Password</label>
               <div className="relative">
-                <Lock className="absolute left-3.5 top-3.5 h-4 w-4 text-secondary" />
+                <Lock className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-secondary" />
                 <input
                   type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Minimum 6 characters"
-                  className="app-field pl-10 pr-4 text-sm"
+                  className="app-field !pl-11 pr-4 text-sm"
+                  style={{ paddingLeft: '2.75rem' }}
                 />
               </div>
             </div>
