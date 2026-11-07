@@ -17,7 +17,11 @@ import {
   Volume2,
   Upload,
   Film,
-  Mail
+  Mail,
+  Coffee,
+  X,
+  FileText,
+  Edit3
 } from 'lucide-react';
 import { DocumentaryJob } from '@/lib/types';
 import { TimelineEditorModal } from '@/components/TimelineEditorModal';
@@ -53,6 +57,11 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
   const [isUpdatingThumb, setIsUpdatingThumb] = useState(false);
   const [thumbnailStatusMsg, setThumbnailStatusMsg] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isNoticeDismissed, setIsNoticeDismissed] = useState(false);
+  const [isApprovingScript, setIsApprovingScript] = useState(false);
+  const [approveError, setApproveError] = useState<string | null>(null);
+  const [editingSceneNum, setEditingSceneNum] = useState<number | null>(null);
+  const [editedNarrations, setEditedNarrations] = useState<Record<number, string>>({});
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -203,6 +212,47 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
     }
   };
 
+  const handleApproveScript = async () => {
+    if (!job) return;
+    setIsApprovingScript(true);
+    setApproveError(null);
+    try {
+      const mergedScenes = (job.scenes || []).map((s, idx) => {
+        const narration = editedNarrations[s.sceneNumber] !== undefined ? editedNarrations[s.sceneNumber] : s.narration;
+        return {
+          sceneNumber: s.sceneNumber || idx + 1,
+          title: s.title || `Scene ${idx + 1}`,
+          narration: narration || '',
+          imagePrompt: s.imagePrompt || narration || '',
+          approxDurationSeconds: Math.max(2, Math.min(60, Number(s.approxDurationSeconds) || 6)),
+          subtitleText: s.subtitleText || narration || '',
+        };
+      });
+
+      const res = await fetch(`/api/jobs/${job.id}/script`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          approve: true,
+          summary: job.scriptSummary || '',
+          scenes: mergedScenes,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to approve script');
+      }
+      if (data.job) {
+        setJob(data.job);
+      }
+    } catch (err: unknown) {
+      console.error('[Approve Script Error]:', err);
+      setApproveError(err instanceof Error ? err.message : 'Failed to approve script');
+    } finally {
+      setIsApprovingScript(false);
+    }
+  };
+
   if (!job) {
     return (
       <div className="max-w-4xl mx-auto py-16 px-4 text-center">
@@ -215,14 +265,21 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
 
   const isFailed = job.status === 'failed';
   const isCompleted = job.status === 'completed';
+  const isReviewingScript = job.status === 'reviewing_script';
 
   const getStageStatus = (stageKey: string) => {
+    if (isCompleted) return 'completed';
+    if (isFailed && job.progress.stage === stageKey) return 'failed';
+    if (isReviewingScript) {
+      if (stageKey === 'writing_script') return 'completed';
+      if (stageKey === 'generating_images') return 'active';
+      return 'pending';
+    }
+
     const stageOrder = ['writing_script', 'generating_images', 'generating_narration', 'creating_subtitles', 'rendering_video', 'completed'];
     const currentIdx = stageOrder.indexOf(job.status);
     const stageIdx = stageOrder.indexOf(stageKey);
 
-    if (isCompleted) return 'completed';
-    if (isFailed && job.progress.stage === stageKey) return 'failed';
     if (currentIdx === stageIdx) return 'active';
     if (currentIdx > stageIdx) return 'completed';
     return 'pending';
@@ -259,8 +316,28 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
           </div>
         </div>
 
-        {/* CTA if completed or failed */}
+        {/* CTA if completed, failed, or awaiting script review */}
         <div className="flex items-center gap-3">
+          {isReviewingScript && (
+            <button
+              onClick={handleApproveScript}
+              disabled={isApprovingScript}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-extrabold text-sm shadow-xl shadow-amber-500/25 transition active:scale-95 disabled:opacity-50 cursor-pointer"
+            >
+              {isApprovingScript ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-black" />
+                  <span>Approving Script...</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 fill-black text-black" />
+                  <span>Approve & Continue Production</span>
+                </>
+              )}
+            </button>
+          )}
+
           {isFailed && (
             <button
               onClick={handleRetry}
@@ -317,21 +394,21 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
                 ? 'bg-rose-500'
                 : isCompleted
                 ? 'bg-gradient-to-r from-emerald-500 to-teal-400'
-                : 'bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-600'
+                : 'bg-gradient-to-r from-amber-500 to-orange-500'
             }`}
             style={{ width: `${Math.max(job.progress.percent, 3)}%` }}
           ></div>
         </div>
 
         {/* Sit Back & Relax Email Notice */}
-        {!isCompleted && !isFailed && (
-          <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3.5 animate-in fade-in">
-            <div className="flex items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-lg">
-                ☕
+        {!isCompleted && !isFailed && !isNoticeDismissed && (
+          <div className="mb-6 flex items-center justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3.5 animate-in fade-in">
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
+                <Coffee className="h-4 w-4 text-amber-400" />
               </span>
-              <div>
-                <p className="text-xs font-bold text-amber-200 flex items-center gap-1.5">
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
                   Sit back and relax!
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
                 </p>
@@ -340,10 +417,64 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-1.5 self-start sm:self-auto shrink-0 rounded-full border border-amber-500/30 bg-black/40 px-3 py-1 text-[11px] font-medium text-amber-300">
-              <Mail className="h-3.5 w-3.5 text-amber-400" />
-              <span>Email notification enabled</span>
+            <button
+              type="button"
+              onClick={() => setIsNoticeDismissed(true)}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition shrink-0 cursor-pointer"
+              title="Close notification"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Script Review Banner */}
+        {isReviewingScript && (
+          <div className="mb-6 rounded-2xl border-2 border-amber-500/60 bg-gradient-to-br from-amber-500/15 via-orange-500/10 to-amber-950/30 p-5 sm:p-6 shadow-xl shadow-amber-500/10 animate-in fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500 text-black font-black text-xs shadow">
+                    ✓
+                  </span>
+                  <h4 className="text-base font-extrabold text-white tracking-tight">
+                    Script Ready with {job.scenes?.length || 10} Scenes
+                  </h4>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                    Awaiting Approval
+                  </span>
+                </div>
+                <p className="text-xs text-gray-300 leading-relaxed max-w-2xl">
+                  Review the narration and scenes below. Click <strong>Approve & Continue</strong> to proceed with image generation, voice narration, subtitles, and final 1080p video rendering.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleApproveScript}
+                disabled={isApprovingScript}
+                className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-extrabold text-sm shadow-xl shadow-amber-500/30 transition active:scale-95 disabled:opacity-50 shrink-0 cursor-pointer"
+              >
+                {isApprovingScript ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-black" />
+                    <span>Approving Script...</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4 fill-black text-black" />
+                    <span>Approve & Continue Production</span>
+                  </>
+                )}
+              </button>
             </div>
+
+            {approveError && (
+              <div className="mt-3 p-3 rounded-xl bg-rose-950/60 border border-rose-800 text-rose-300 text-xs flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
+                <span>{approveError}</span>
+              </div>
+            )}
           </div>
         )}
 
@@ -533,21 +664,45 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h3 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-                <ImageIcon className="w-4 h-4 text-amber-400" />
-                <span>{job.contentStyle === 'kids' ? `Kids ${job.kidsFormat || 'Story'} Scenes` : 'Documentary Scenes'} & AI Visuals ({job.scenes.length})</span>
+                {isReviewingScript ? (
+                  <>
+                    <FileText className="w-5 h-5 text-amber-400" />
+                    <span>Review Generated Script ({job.scenes.length} Scenes)</span>
+                  </>
+                ) : (
+                  <>
+                    <ImageIcon className="w-4 h-4 text-amber-400" />
+                    <span>{job.contentStyle === 'kids' ? `Kids ${job.kidsFormat || 'Story'} Scenes` : 'Documentary Scenes'} & AI Visuals ({job.scenes.length})</span>
+                  </>
+                )}
               </h3>
               <p className="text-xs text-gray-400">
-                Hover any scene to replace its image with your own, or open the Timeline Editor.
+                {isReviewingScript
+                  ? 'Review each scene narration below before approving production.'
+                  : 'Hover any scene to replace its image with your own, or open the Timeline Editor.'}
               </p>
             </div>
 
-            <button
-              onClick={() => setIsTimelineOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 text-white font-semibold text-xs shadow-lg transition active:scale-95 shrink-0 self-start sm:self-auto"
-            >
-              <Film className="w-3.5 h-3.5" />
-              <span>Edit Timeline & Video</span>
-            </button>
+            <div className="flex items-center gap-2">
+              {isReviewingScript && (
+                <button
+                  type="button"
+                  onClick={handleApproveScript}
+                  disabled={isApprovingScript}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-extrabold text-xs shadow-lg transition active:scale-95 disabled:opacity-50 cursor-pointer"
+                >
+                  {isApprovingScript ? <Loader2 className="w-3.5 h-3.5 animate-spin text-black" /> : <Play className="w-3.5 h-3.5 fill-black text-black" />}
+                  <span>Approve & Continue</span>
+                </button>
+              )}
+              <button
+                onClick={() => setIsTimelineOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-white font-semibold text-xs border border-gray-700 shadow-lg transition active:scale-95 shrink-0 self-start sm:self-auto"
+              >
+                <Film className="w-3.5 h-3.5" />
+                <span>Edit Timeline & Video</span>
+              </button>
+            </div>
           </div>
 
           {imageUploadMsg && (
@@ -560,6 +715,8 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {job.scenes.map((scene) => {
               const isUploadingThis = uploadingSceneNum === scene.sceneNumber;
+              const currentNarration = editedNarrations[scene.sceneNumber] !== undefined ? editedNarrations[scene.sceneNumber] : scene.narration;
+              const isEditingThis = editingSceneNum === scene.sceneNumber;
 
               return (
                 <div
@@ -619,10 +776,46 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
                     <div>
                       <div className="flex items-center justify-between">
                         <h4 className="text-xs font-semibold text-white truncate">{scene.title}</h4>
+                        {isReviewingScript && !isEditingThis && (
+                          <button
+                            type="button"
+                            onClick={() => setEditingSceneNum(scene.sceneNumber)}
+                            className="text-[10px] text-amber-400 hover:text-amber-300 flex items-center gap-1 font-semibold"
+                          >
+                            <Edit3 className="w-3 h-3" /> Edit
+                          </button>
+                        )}
                       </div>
-                      <p className="text-[11px] text-gray-400 line-clamp-2 mt-1 leading-relaxed">
-                        &ldquo;{scene.narration}&rdquo;
-                      </p>
+
+                      {isEditingThis ? (
+                        <div className="mt-2 space-y-2">
+                          <textarea
+                            value={currentNarration}
+                            onChange={(e) => setEditedNarrations(prev => ({ ...prev, [scene.sceneNumber]: e.target.value }))}
+                            rows={3}
+                            className="w-full text-xs p-2 rounded-lg bg-gray-950 border border-amber-500/50 text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+                          />
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setEditingSceneNum(null)}
+                              className="px-2.5 py-1 rounded bg-amber-500 text-black font-bold text-[11px]"
+                            >
+                              Done
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className={`text-[11px] text-gray-300 mt-1 leading-relaxed ${isReviewingScript ? '' : 'line-clamp-2'}`}>
+                          &ldquo;{currentNarration}&rdquo;
+                        </p>
+                      )}
+
+                      {scene.imagePrompt && isReviewingScript && !isEditingThis && (
+                        <p className="text-[10px] text-gray-400 mt-1.5 line-clamp-1 italic">
+                          <span className="text-amber-400/80 font-semibold not-italic">Visual:</span> {scene.imagePrompt}
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-800/60 text-[10px] text-gray-500">
@@ -654,6 +847,39 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
               );
             })}
           </div>
+
+          {/* Bottom Approval Bar for convenient access after scrolling through the script */}
+          {isReviewingScript && (
+            <div className="p-4 sm:p-5 rounded-2xl border-2 border-amber-500/50 bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-6 shadow-xl">
+              <div>
+                <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-amber-400" />
+                  <span>Ready to produce this video?</span>
+                </h4>
+                <p className="text-xs text-gray-300 mt-0.5">
+                  Click Approve to start generating 1080p images, voice narration, subtitles, and render the final MP4 video.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleApproveScript}
+                disabled={isApprovingScript}
+                className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-extrabold text-xs shadow-xl shadow-amber-500/30 transition active:scale-95 disabled:opacity-50 cursor-pointer shrink-0"
+              >
+                {isApprovingScript ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-black" />
+                    <span>Approving Script...</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4 fill-black text-black" />
+                    <span>Approve & Continue Production</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
