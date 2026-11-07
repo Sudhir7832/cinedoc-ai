@@ -2,7 +2,7 @@
 
 import { Moon, Sun } from 'lucide-react';
 
-export function ThemeToggle() {
+export function ThemeToggle({ className = '' }: { className?: string } = {}) {
   const toggleTheme = () => {
     const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
     document.documentElement.classList.toggle('dark', next === 'dark');
@@ -15,7 +15,7 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={toggleTheme}
-      className="icon-button shrink-0"
+      className={`icon-button shrink-0 ${className}`}
       aria-label="Toggle light and dark theme"
       title="Toggle light and dark theme"
     >

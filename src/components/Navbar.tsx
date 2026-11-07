@@ -39,12 +39,13 @@ export function Navbar({
   const availableCredits = user ? (user.availableCredits ?? user.credits) : 0;
 
   return (
-    <header className="app-header sticky top-0 z-40 px-4 sm:px-6">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3">
-        <Link href="/" className="flex min-w-0 items-center gap-3" aria-label="KinesisFlow home">
-          <Logo size={36} />
-          <span className="min-w-0">
-            <span className="block truncate text-base font-extrabold tracking-[-0.03em] text-primary">KinesisFlow</span>
+    <header className="app-header sticky top-0 z-40 px-3.5 sm:px-6">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 sm:gap-3">
+        <Link href="/" className="flex shrink-0 items-center gap-2 sm:gap-2.5" aria-label="KinesisFlow home">
+          <Logo size={32} className="shrink-0 sm:hidden" />
+          <Logo size={36} className="hidden shrink-0 sm:inline-flex" />
+          <span className="shrink-0">
+            <span className="block whitespace-nowrap text-base sm:text-lg font-extrabold tracking-[-0.03em] text-primary">KinesisFlow</span>
             <span className="hidden text-[11px] font-medium text-secondary sm:block">AI-assisted video workspace</span>
           </span>
         </Link>
@@ -67,8 +68,8 @@ export function Navbar({
           </Link>
         </nav>
 
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <ThemeToggle className="!h-10 !w-10 sm:!h-11 sm:!w-11" />
 
           {user ? (
             <button type="button" onClick={onOpenCreditHistory} className="hidden min-h-11 items-center gap-2 rounded-xl brand-soft px-3 sm:flex" title="View balance and credit transactions">
@@ -90,7 +91,7 @@ export function Navbar({
               <button
                 type="button"
                 onClick={() => setUserDropdownOpen(open => !open)}
-                className="btn-secondary !px-2.5"
+                className="btn-secondary !min-h-10 !px-2 sm:!px-2.5"
                 aria-expanded={userDropdownOpen}
                 aria-haspopup="menu"
               >
@@ -134,13 +135,13 @@ export function Navbar({
               )}
             </div>
           ) : (
-            <button type="button" onClick={onOpenAuth} className="btn-secondary !px-3">
+            <button type="button" onClick={onOpenAuth} className="btn-secondary !min-h-10 !px-2.5 sm:!px-3" title="Sign in">
               <LogIn className="h-4 w-4" aria-hidden="true" />
               <span className="hidden sm:inline">Sign in</span>
             </button>
           )}
 
-          <button type="button" onClick={onNewJob} className="btn-primary !px-3 sm:!px-4">
+          <button type="button" onClick={onNewJob} className="btn-primary !min-h-10 !px-2.5 sm:!px-4" title="New video">
             <Plus className="h-4 w-4" aria-hidden="true" />
             <span className="hidden sm:inline">New video</span>
             <span className="sm:hidden">New</span>
