@@ -22,3 +22,14 @@ test('same-origin mutations pass and foreign origins fail', () => {
     else process.env.NEXT_PUBLIC_SITE_URL = previous;
   }
 });
+
+test('supports comma-separated origins and server deployment host fallback', () => {
+  const previous = process.env.NEXT_PUBLIC_SITE_URL;
+  process.env.NEXT_PUBLIC_SITE_URL = 'https://custom.example, https://170-187-238-145.ip.linodeusercontent.com';
+  try {
+    assert.equal(getCanonicalOrigin(request('https://170-187-238-145.ip.linodeusercontent.com', '170-187-238-145.ip.linodeusercontent.com')), 'https://170-187-238-145.ip.linodeusercontent.com');
+  } finally {
+    if (previous === undefined) delete process.env.NEXT_PUBLIC_SITE_URL;
+    else process.env.NEXT_PUBLIC_SITE_URL = previous;
+  }
+});
