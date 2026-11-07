@@ -42,8 +42,7 @@ export function Navbar({
     <header className="app-header sticky top-0 z-40 px-3.5 sm:px-6">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 sm:gap-3">
         <Link href="/" className="flex shrink-0 items-center gap-2 sm:gap-2.5" aria-label="KinesisFlow home">
-          <Logo size={32} className="shrink-0 sm:hidden" />
-          <Logo size={36} className="hidden shrink-0 sm:inline-flex" />
+          <Logo size={36} />
           <span className="shrink-0">
             <span className="block whitespace-nowrap text-base sm:text-lg font-extrabold tracking-[-0.03em] text-primary">KinesisFlow</span>
             <span className="hidden text-[11px] font-medium text-secondary sm:block">AI-assisted video workspace</span>
