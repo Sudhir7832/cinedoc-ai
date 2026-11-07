@@ -73,6 +73,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   assertLaunchConfiguration();
   return (
     <html lang="en" className={`${inter.variable} ${newsreader.variable}`} suppressHydrationWarning>
+      <head>
+        <script async src="https://www.googletagmanager.com/gtm.js?id=GTM-53JXZ5LW" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());`,
+          }}
+        />
+      </head>
       <body className="min-h-full">
         <Script id="kinesisflow-theme" strategy="beforeInteractive">{themeScript}</Script>
         <AuthProviderWrapper>
