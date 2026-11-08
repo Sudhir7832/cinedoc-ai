@@ -269,10 +269,10 @@ export function Dashboard({
         })}
       </section>
 
-      {/* Platform Optimization Badge - Vector SVGs & Real Typography */}
+      {/* Platform Optimization - Theme-Native Design (No black strip) */}
       <div className="flex justify-center py-2" aria-label="Supported video platforms">
-        <div className="inline-flex flex-wrap items-center justify-center gap-4 sm:gap-6 rounded-2xl bg-black px-6 py-3 border border-white/10 shadow-xl transition-all hover:border-[var(--app-brand)]/40 max-w-[94vw]">
-          <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-[0.16em] text-neutral-400">
+        <div className="surface-card inline-flex flex-wrap items-center justify-center gap-4 sm:gap-6 rounded-full px-6 py-2.5 border border-theme shadow-sm max-w-[94vw]">
+          <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-[0.16em] text-secondary">
             OPTIMIZED FOR
           </span>
 
@@ -282,7 +282,7 @@ export function Dashboard({
               <rect width="28" height="20" rx="5" fill="#FF0000" />
               <polygon points="11,5 19,10 11,15" fill="#FFFFFF" />
             </svg>
-            <span className="text-sm sm:text-base font-extrabold tracking-[-0.03em] text-white">YouTube</span>
+            <span className="text-xs sm:text-sm font-bold tracking-tight text-primary">YouTube</span>
           </div>
 
           {/* Instagram */}
@@ -302,7 +302,7 @@ export function Dashboard({
               <circle cx="12" cy="12" r="2.7" stroke="#FFFFFF" strokeWidth="1.8" />
               <circle cx="15.8" cy="8.2" r="0.85" fill="#FFFFFF" />
             </svg>
-            <span className="text-sm sm:text-base font-bold italic tracking-[-0.01em] text-white">Instagram</span>
+            <span className="text-xs sm:text-sm font-bold tracking-tight text-primary">Instagram</span>
           </div>
 
           {/* TikTok */}
@@ -310,11 +310,11 @@ export function Dashboard({
             <svg viewBox="0 0 24 24" className="h-4 sm:h-5 w-4 sm:w-5" fill="none" aria-hidden="true">
               <path
                 d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.298-.002.595.042.88.13V9.4a6.33 6.33 0 0 0-1-.08A6.34 6.34 0 0 0 3 15.66a6.34 6.34 0 0 0 10.86 4.43c.4-.38.74-.82 1.01-1.31.25-.46.42-.96.48-1.48V8.82a8.16 8.16 0 0 0 4.24 1.25V6.7a4.85 4.85 0 0 1-.0-.01z"
-                fill="#FFFFFF"
-                className="drop-shadow-[1.2px_0_0_#FE2C55] drop-shadow-[-1.2px_0_0_#25F4EE]"
+                fill="currentColor"
+                className="text-primary drop-shadow-[1px_0_0_#FE2C55] drop-shadow-[-1px_0_0_#25F4EE]"
               />
             </svg>
-            <span className="text-sm sm:text-base font-extrabold tracking-[-0.02em] text-white">TikTok</span>
+            <span className="text-xs sm:text-sm font-bold tracking-tight text-primary">TikTok</span>
           </div>
         </div>
       </div>
