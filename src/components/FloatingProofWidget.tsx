@@ -24,7 +24,25 @@ export function FloatingProofWidget() {
     pathname?.startsWith('/sign-in') ||
     pathname?.startsWith('/sign-up');
 
+  const handleClose = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setIsOpen(false);
+    try {
+      localStorage.setItem('cinedoc_youtube_proof_dismissed', 'true');
+    } catch {
+      // ignore
+    }
+  };
+
   useEffect(() => {
+    try {
+      if (localStorage.getItem('cinedoc_youtube_proof_dismissed') === 'true') {
+        return;
+      }
+    } catch {
+      // ignore
+    }
+
     // Delay appearance slightly so the page content loads smoothly
     const timer = setTimeout(() => {
       setIsOpen(true);
@@ -54,24 +72,35 @@ export function FloatingProofWidget() {
         className="fixed bottom-4 left-4 z-40 sm:bottom-6 sm:left-6 transition-all duration-300"
       >
         {isMinimized ? (
-          // Minimized Pill
-          <button
-            type="button"
-            onClick={() => setIsMinimized(false)}
-            className="group flex items-center gap-2.5 rounded-full border border-[var(--app-border)] bg-[var(--app-surface-raised)]/95 px-3.5 py-2 text-xs font-semibold text-primary shadow-xl backdrop-blur-md transition-all hover:scale-105 hover:border-[var(--app-brand)]"
-            title="Expand YouTube Channel Proof"
-          >
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-white shadow-sm">
-              <TrendingUp className="h-3 w-3" />
-            </span>
-            <span className="font-bold text-primary">YouTube Proof</span>
-            <span className="text-[11px] font-medium text-secondary">
-              $302K+ · 261M Views
-            </span>
-            <span className="ml-1 text-[10px] font-bold brand-text group-hover:underline">
-              Show
-            </span>
-          </button>
+          // Minimized Pill (with dedicated expand button and close button)
+          <div className="group flex items-center rounded-full border border-[var(--app-border)] bg-[var(--app-surface-raised)]/95 pl-3.5 pr-2 py-1.5 text-xs font-semibold text-primary shadow-xl backdrop-blur-md transition-all hover:scale-[1.02] hover:border-[var(--app-brand)] gap-2.5">
+            <button
+              type="button"
+              onClick={() => setIsMinimized(false)}
+              className="flex items-center gap-2.5 text-left transition-all"
+              title="Expand YouTube Channel Proof"
+            >
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-600 text-white shadow-sm">
+                <TrendingUp className="h-3 w-3" />
+              </span>
+              <span className="font-bold text-primary">YouTube Proof</span>
+              <span className="text-[11px] font-medium text-secondary">
+                $302K+ · 261M Views
+              </span>
+              <span className="text-[10px] font-bold brand-text hover:underline">
+                Show
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-secondary hover:bg-[var(--app-surface-soft)] hover:text-primary transition-colors"
+              title="Close YouTube Proof"
+              aria-label="Close YouTube Proof"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
         ) : (
           // Full Floating Card
           <div className="relative w-[300px] sm:w-[340px] rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-raised)]/95 p-3 sm:p-3.5 shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-5 duration-300">
@@ -112,7 +141,7 @@ export function FloatingProofWidget() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setIsMinimized(true)}
+                  onClick={handleClose}
                   className="rounded-lg p-1 text-secondary transition-colors hover:bg-[var(--app-surface-soft)] hover:text-primary"
                   title="Close"
                   aria-label="Close proof"
