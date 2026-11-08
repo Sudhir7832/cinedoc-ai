@@ -122,9 +122,11 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
   };
 
   useEffect(() => {
-    if (!isTimelineOpen) return;
+    if (!isTimelineOpen) {
+      document.body.style.overflow = '';
+      return;
+    }
 
-    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setIsTimelineOpen(false);
@@ -132,7 +134,7 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
     window.addEventListener('keydown', closeOnEscape);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
+      document.body.style.overflow = '';
       window.removeEventListener('keydown', closeOnEscape);
     };
   }, [isTimelineOpen]);

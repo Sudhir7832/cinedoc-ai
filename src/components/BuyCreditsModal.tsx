@@ -119,10 +119,10 @@ export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpe
   }, [isOpen, user?.role]);
 
   useEffect(() => {
-    if (!isOpen) return;
-
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    if (!isOpen) {
+      document.body.style.overflow = '';
+      return;
+    }
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -130,7 +130,7 @@ export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpe
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      document.body.style.overflow = originalOverflow;
+      document.body.style.overflow = '';
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, onClose]);

@@ -67,11 +67,12 @@
 html {
   background: var(--app-bg);
   scroll-behavior: smooth;
+  overflow-x: clip;
 }
 
 body {
   min-height: 100vh;
-  overflow-x: hidden;
+  overflow-x: clip;
   background: var(--app-bg);
   color: var(--app-text);
   font-family: var(--font-inter), Inter, ui-sans-serif, system-ui, sans-serif;

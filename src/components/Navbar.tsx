@@ -65,6 +65,9 @@ export function Navbar({
           <Link href="/faq" className="py-2 text-xs font-semibold text-secondary transition-colors hover:text-[var(--app-text)]">
             FAQ
           </Link>
+          <Link href="/support" className="py-2 text-xs font-semibold text-secondary transition-colors hover:text-[var(--app-text)]">
+            Support
+          </Link>
           <Link href="/terms" className="py-2 text-xs font-semibold text-secondary transition-colors hover:text-[var(--app-text)]">
             Terms
           </Link>

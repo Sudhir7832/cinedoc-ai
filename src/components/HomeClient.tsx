@@ -236,9 +236,17 @@ export function HomeClient() {
   };
 
   useEffect(() => {
-    if (!activeModal) return;
+    // When switching between dashboard and progress view, ensure scroll is enabled
+    document.body.style.overflow = '';
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+  }, [view]);
 
-    const previousOverflow = document.body.style.overflow;
+  useEffect(() => {
+    if (!activeModal) {
+      document.body.style.overflow = '';
+      return;
+    }
+
     document.body.style.overflow = 'hidden';
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setActiveModal(null);
@@ -246,7 +254,7 @@ export function HomeClient() {
     window.addEventListener('keydown', closeOnEscape);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
+      document.body.style.overflow = '';
       window.removeEventListener('keydown', closeOnEscape);
     };
   }, [activeModal]);
@@ -321,6 +329,7 @@ export function HomeClient() {
             <Link href="/about" className="hover:text-[var(--app-text)] transition">About</Link>
             <Link href="/blog" className="hover:text-[var(--app-text)] transition">Blog</Link>
             <Link href="/faq" className="hover:text-[var(--app-text)] transition">FAQ</Link>
+            <Link href="/support" className="hover:text-[var(--app-text)] transition">Support</Link>
             <button onClick={() => setActiveModal('credits')} className="hover:text-[var(--app-text)] transition">Credits</button>
           </div>
 

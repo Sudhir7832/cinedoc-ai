@@ -5,6 +5,7 @@ import Script from 'next/script';
 import './globals.css';
 import { AuthProviderWrapper } from '@/components/AuthProviderWrapper';
 import { CookieConsent } from '@/components/CookieConsent';
+import { ScrollRestorationFix } from '@/components/ScrollRestorationFix';
 import { assertLaunchConfiguration, getSiteUrl } from '@/lib/brand';
 
 const inter = Inter({
@@ -101,6 +102,7 @@ gtag('config', 'G-Z7HJRVY5CP', {
           />
         </noscript>
         <Script id="kinesisflow-theme" strategy="beforeInteractive">{themeScript}</Script>
+        <ScrollRestorationFix />
         <AuthProviderWrapper>
           {children}
           <CookieConsent />
