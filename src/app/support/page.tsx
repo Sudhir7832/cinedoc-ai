@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, ArrowUpRight, Clapperboard, HelpCircle, Mail } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUpRight, HelpCircle, Mail } from 'lucide-react';
+import { Logo } from '@/components/Logo';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { SupportCopyButton } from './SupportCopyButton';
 
@@ -90,10 +91,10 @@ export default function SupportPage() {
             <ArrowLeft className="h-4 w-4" /> Back to studio
           </Link>
           <div className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--app-text)] text-[var(--app-surface)]">
-              <Clapperboard className="h-4 w-4" />
-            </span>
-            <span className="hidden text-sm font-extrabold text-primary sm:inline">KinesisFlow</span>
+            <Link href="/" className="flex items-center gap-2.5" aria-label="KinesisFlow home">
+              <Logo size={32} />
+              <span className="hidden text-sm font-extrabold text-primary sm:inline">KinesisFlow</span>
+            </Link>
             <ThemeToggle />
           </div>
         </div>

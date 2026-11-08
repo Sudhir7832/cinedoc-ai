@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, Clapperboard } from 'lucide-react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { Logo } from '@/components/Logo';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
 const description = 'Learn how KinesisFlow combines scene planning, generated visuals, narration, optional subtitles, timeline editing, and MP4 rendering for documentary-style and Kids & Family videos.';
@@ -20,8 +21,10 @@ export default function AboutPage() {
         <div className="mx-auto flex h-[72px] max-w-5xl items-center justify-between gap-3">
           <Link href="/" className="btn-secondary !px-3 text-xs"><ArrowLeft className="h-4 w-4" /> Back to studio</Link>
           <div className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--app-text)] text-[var(--app-surface)]"><Clapperboard className="h-4 w-4" /></span>
-            <span className="text-sm font-extrabold text-primary">KinesisFlow</span>
+            <Link href="/" className="flex items-center gap-2.5" aria-label="KinesisFlow home">
+              <Logo size={32} />
+              <span className="text-sm font-extrabold text-primary">KinesisFlow</span>
+            </Link>
             <ThemeToggle />
           </div>
         </div>
