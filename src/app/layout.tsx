@@ -5,6 +5,7 @@ import Script from 'next/script';
 import './globals.css';
 import { AuthProviderWrapper } from '@/components/AuthProviderWrapper';
 import { CookieConsent } from '@/components/CookieConsent';
+import { FloatingProofWidget } from '@/components/FloatingProofWidget';
 import { ScrollRestorationFix } from '@/components/ScrollRestorationFix';
 import { assertLaunchConfiguration, getSiteUrl } from '@/lib/brand';
 
@@ -106,6 +107,7 @@ gtag('config', 'G-Z7HJRVY5CP', {
         <AuthProviderWrapper>
           {children}
           <CookieConsent />
+          <FloatingProofWidget />
         </AuthProviderWrapper>
       </body>
     </html>
