@@ -22,6 +22,17 @@ function getLikeCount(id: string): number {
 
 const FALLBACK_TESTIMONIALS: TestimonialVideo[] = [
   {
+    id: 'fallback-jet-480',
+    title: 'Supersonic: Air Superiority',
+    description: 'Cinematic aviation documentary master output generated with KinesisFlow.',
+    videoUrl: '/samples/jet-480.mp4',
+    format: 'landscape',
+    category: 'documentary',
+    attribution: 'Master Output',
+    published: true,
+    createdAt: '2026-11-08T12:00:00.000Z',
+  },
+  {
     id: 'fallback-moon-to-mars',
     title: 'Moon to Mars: India’s Journey',
     description: 'A cinematic account of Chandrayaan and deep space exploration.',

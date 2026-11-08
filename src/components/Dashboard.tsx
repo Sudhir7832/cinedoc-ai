@@ -29,6 +29,7 @@ import {
   Video,
   Volume2,
   WandSparkles,
+  X,
   Youtube,
 } from 'lucide-react';
 import { DocumentaryJob, SafeUser } from '@/lib/types';
@@ -83,6 +84,7 @@ export function Dashboard({
   const [masterVideo, setMasterVideo] = useState<string>('');
   const [masterPoster, setMasterPoster] = useState<string>('');
   const [pipelineStage, setPipelineStage] = useState<'script' | 'thumbnails' | 'audio' | 'timeline' | 'master'>('script');
+  const [isJetPreviewOpen, setIsJetPreviewOpen] = useState(false);
 
   useEffect(() => {
     fetch('/api/config')
@@ -189,8 +191,17 @@ export function Dashboard({
             })}
           </div>
 
-          <div className="relative mt-5 aspect-[16/8] overflow-hidden rounded-md bg-[#171821]">
-            {user && latestVisual ? (
+          <div className="relative mt-5 aspect-[16/8] overflow-hidden rounded-md bg-[#171821] group">
+            {!user ? (
+              <video
+                src="/jet-480.mp4"
+                autoPlay
+                muted
+                loop
+                playsInline
+                className="h-full w-full object-cover opacity-90 transition-transform duration-500 group-hover:scale-105"
+              />
+            ) : latestVisual ? (
               <Image src={latestVisual} alt="Latest documentary scene" fill sizes="(min-width: 1024px) 32vw, 100vw" unoptimized className="object-cover opacity-85" />
             ) : masterVideo ? (
               <video
@@ -202,17 +213,34 @@ export function Dashboard({
                 playsInline
                 className="h-full w-full object-cover opacity-90"
               />
-            ) : latestVisual ? (
-              <Image src={latestVisual} alt="Latest documentary scene" fill sizes="(min-width: 1024px) 32vw, 100vw" unoptimized className="object-cover opacity-85" />
             ) : (
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_65%_35%,#ed5b3255,transparent_28%),linear-gradient(145deg,#20222d,#0d0e13)]" />
+              <video
+                src="/jet-480.mp4"
+                autoPlay
+                muted
+                loop
+                playsInline
+                className="h-full w-full object-cover opacity-90"
+              />
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent pointer-events-none" />
+
+            {!user && (
+              <button
+                type="button"
+                onClick={() => setIsJetPreviewOpen(true)}
+                className="contrast-on-color absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-bold text-white shadow-md backdrop-blur-sm transition-all hover:bg-black hover:scale-105"
+                title="Watch preview with sound"
+              >
+                <Play className="h-3 w-3 fill-white" /> Preview
+              </button>
+            )}
+
             <div className="contrast-on-color absolute bottom-0 left-0 right-0 flex items-end justify-between p-4 pointer-events-none">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/60">Master output</p>
                 <p className="mt-1 text-sm font-bold truncate max-w-[200px]">
-                  {user && latestVisualJob ? latestVisualJob.topic : 'Cinematic 1080p delivery'}
+                  {user && latestVisualJob ? latestVisualJob.topic : 'Supersonic Jet: Cinematic 1080p delivery'}
                 </p>
               </div>
               <span className="border border-white/20 px-2 py-1 text-[10px] font-bold shrink-0 ml-2">30 FPS</span>
@@ -240,6 +268,20 @@ export function Dashboard({
           );
         })}
       </section>
+
+      {/* Platform Optimization Logos - Centered in Middle */}
+      <div className="flex justify-center py-2" aria-label="Supported video platforms">
+        <div className="inline-flex items-center justify-center rounded-2xl bg-black px-6 py-3 border border-white/10 shadow-xl transition-all hover:border-[var(--app-brand)]/40 max-w-[92vw]">
+          <Image
+            src="/optimized-platforms.png"
+            alt="Optimized for YouTube, Instagram, and TikTok"
+            width={423}
+            height={34}
+            className="h-7 sm:h-9 w-auto object-contain"
+            priority
+          />
+        </div>
+      </div>
 
       <section className="space-y-5">
         <div className="flex flex-col justify-between gap-3 border-b border-theme sm:flex-row sm:items-end">
@@ -1096,6 +1138,56 @@ export function Dashboard({
       </section>
 
       <SampleShowcase />
+
+      {/* Master Video Preview Modal */}
+      {isJetPreviewOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Master output video preview"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setIsJetPreviewOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-3xl overflow-hidden rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-raised)] shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-[var(--app-border)] px-4 py-3 sm:px-6">
+              <div>
+                <h3 className="text-sm font-bold text-primary">Master Output Preview (jet-480)</h3>
+                <p className="text-xs text-secondary">Cinematic AI-generated documentary render with Ken Burns motion</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsJetPreviewOpen(false)}
+                className="rounded-lg p-1.5 text-secondary hover:bg-[var(--app-surface-soft)] hover:text-primary transition-colors"
+                aria-label="Close preview"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="aspect-video bg-black flex items-center justify-center">
+              <video
+                src="/jet-480.mp4"
+                controls
+                autoPlay
+                playsInline
+                className="h-full w-full object-contain"
+              />
+            </div>
+            <div className="flex items-center justify-between border-t border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-3 sm:px-6 text-xs text-secondary">
+              <span className="font-medium">Ready for YouTube Studio 16:9 &amp; Mobile Feeds</span>
+              <button
+                type="button"
+                onClick={() => setIsJetPreviewOpen(false)}
+                className="btn-secondary !py-1 !px-3 text-xs"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
