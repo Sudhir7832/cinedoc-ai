@@ -44,6 +44,10 @@ yarn-error.log*
 /data/generated/
 /public/generated/
 /public/testimonials/
+/public/ad/
+/public/kinesisflow-ad.mp4
+/scripts/generate-ad-*.js
+/scripts/render-ad-video.py
 /test_*.mp3
 /test_*.bin
 
