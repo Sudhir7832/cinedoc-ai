@@ -164,7 +164,7 @@ export function HomeClient() {
         .then(async res => {
           const data = await res.json();
           if (data.success) {
-            setPaymentNotice(`Payment verified! ${data.creditsAdded || 150} credits added to your account.`);
+            setPaymentNotice(`Payment verified! ${data.creditsAdded || 300} credits added to your account.`);
             await fetchUser();
           } else {
             setPaymentNotice(data.error || 'Payment verification failed.');

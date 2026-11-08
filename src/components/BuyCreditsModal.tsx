@@ -80,8 +80,14 @@ const PLAN_FEATURES: Record<string, { badge: string; items: { text: string; high
   },
 };
 
+const DEFAULT_CLIENT_PACKS: PricingPack[] = [
+  { id: 'pack_creator', name: 'Creator', credits: 300, priceUsd: 5, priceInr: 499, videoMinutes: 30, description: 'For creators producing polished shorts and regular documentary episodes.', popular: false },
+  { id: 'pack_pro', name: 'Creator Pro', credits: 600, priceUsd: 19, priceInr: 1699, videoMinutes: 60, description: 'For growing channels, campaigns, and client work.', popular: true },
+  { id: 'pack_studio', name: 'Studio', credits: 1200, priceUsd: 39, priceInr: 3499, videoMinutes: 120, description: 'High-volume capacity for production teams.', popular: false },
+];
+
 export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpenAuth }: BuyCreditsModalProps) {
-  const [packs, setPacks] = useState<PricingPack[]>([]);
+  const [packs, setPacks] = useState<PricingPack[]>(DEFAULT_CLIENT_PACKS);
   const [selectedPackId, setSelectedPackId] = useState('pack_creator');
   const [currency, setCurrency] = useState<'USD' | 'INR'>('USD');
   const [gateway, setGateway] = useState<PaymentGateway>('test');
@@ -100,7 +106,26 @@ export function BuyCreditsModal({ isOpen, onClose, user, onCreditsUpdated, onOpe
       .then(response => response.json())
       .then(data => {
         if (!data.success) return;
-        const nextPacks = data.packs || [];
+        const rawPacks = (data.packs || []) as PricingPack[];
+        const nextPacks = (rawPacks.length > 0 ? rawPacks : DEFAULT_CLIENT_PACKS).map(pack => {
+          let credits = pack.credits;
+          let videoMinutes = pack.videoMinutes;
+          if (pack.id === 'pack_creator') {
+            if (credits < 300) credits = 300;
+            videoMinutes = 30;
+          } else if (pack.id === 'pack_pro') {
+            if (credits < 600) credits = 600;
+            videoMinutes = 60;
+          } else if (pack.id === 'pack_studio') {
+            if (credits < 1200) credits = 1200;
+            videoMinutes = 120;
+          }
+          return {
+            ...pack,
+            credits,
+            videoMinutes: videoMinutes || Math.round(credits / 10),
+          };
+        });
         const hasStripe = Boolean(data.stripeAvailable);
         const hasRazorpay = Boolean(data.razorpayAvailable);
         const hasDodo = Boolean(data.dodoAvailable);

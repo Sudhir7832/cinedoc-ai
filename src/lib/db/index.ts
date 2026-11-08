@@ -28,11 +28,35 @@ type RawRpcClient = {
   rpc<T>(name: string, args: Record<string, unknown>): Promise<{ data: T | null; error: { message: string } | null }>;
 };
 
-const DEFAULT_PACKS: PricingPack[] = [
+export const DEFAULT_PACKS: PricingPack[] = [
   { id: 'pack_creator', name: 'Creator', credits: 300, priceUsd: 5, priceInr: 499, videoMinutes: 30, description: 'For creators producing polished shorts and regular documentary episodes.', popular: false },
   { id: 'pack_pro', name: 'Creator Pro', credits: 600, priceUsd: 19, priceInr: 1699, videoMinutes: 60, description: 'More production time for growing channels, campaigns, and client work.', popular: true },
   { id: 'pack_studio', name: 'Studio', credits: 1200, priceUsd: 39, priceInr: 3499, videoMinutes: 120, description: 'High-volume production capacity for teams and documentary studios.', popular: false },
 ];
+
+export function upgradePricingPacks(rawPacks: PricingPack[], creditsPerScene = 1): PricingPack[] {
+  return rawPacks.map(pack => {
+    let credits = pack.credits;
+    let videoMinutes = pack.videoMinutes;
+    if (pack.id === 'pack_creator') {
+      if (credits < 300) credits = 300;
+      videoMinutes = 30;
+    } else if (pack.id === 'pack_pro') {
+      if (credits < 600) credits = 600;
+      videoMinutes = 60;
+    } else if (pack.id === 'pack_studio') {
+      if (credits < 1200) credits = 1200;
+      videoMinutes = 120;
+    } else {
+      videoMinutes = videoMinutes || minutesForCredits(credits, creditsPerScene);
+    }
+    return {
+      ...pack,
+      credits,
+      videoMinutes,
+    };
+  });
+}
 
 const DEFAULT_SETTINGS: SaasSettings = {
   welcomeCredits: 10,
@@ -80,6 +104,7 @@ function transactionFromRow(row: TransactionRow): PaymentTransaction {
 function settingsFromRow(row: SettingsRow): SaasSettings {
   const creditsPerScene = Number(row.credits_per_scene || 1);
   const rawPacks = Array.isArray(row.pricing_packs) ? row.pricing_packs as unknown as PricingPack[] : DEFAULT_PACKS;
+  const upgradedPacks = upgradePricingPacks(rawPacks, creditsPerScene);
   const runtimeConfig = row.runtime_config && typeof row.runtime_config === 'object' && !Array.isArray(row.runtime_config)
     ? row.runtime_config as Record<string, unknown>
     : {};
@@ -93,7 +118,7 @@ function settingsFromRow(row: SettingsRow): SaasSettings {
     stripePublishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '', stripeSecretKey: process.env.STRIPE_SECRET_KEY || '',
     razorpayKeyId: process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '', razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET || '',
     dodoApiKey: process.env.DODO_PAYMENTS_API_KEY || '', dodoWebhookKey: process.env.DODO_PAYMENTS_WEBHOOK_KEY || '', dodoMode: (process.env.DODO_PAYMENTS_MODE || row.dodo_mode || dodoPayment.mode) === 'live' ? 'live' : 'test',
-    pricingPacks: rawPacks.map(pack => ({ ...pack, videoMinutes: minutesForCredits(pack.credits, creditsPerScene) })),
+    pricingPacks: upgradedPacks,
   };
 }
 
@@ -754,7 +779,25 @@ export class DbManager {
     const service = getServiceSupabase();
     const { data, error } = await service.from('saas_settings').select('*').eq('id', 'global_config').maybeSingle();
     throwIfError(error);
-    if (data) return settingsFromRow(data);
+    if (data) {
+      const settings = settingsFromRow(data);
+      const hasOutdatedPacks = Array.isArray(data.pricing_packs) && (data.pricing_packs as unknown as PricingPack[]).some(
+        p => (p.id === 'pack_creator' && (p.credits < 300 || (p.videoMinutes && p.videoMinutes < 30))) ||
+             (p.id === 'pack_pro' && (p.credits < 600 || (p.videoMinutes && p.videoMinutes < 60))) ||
+             (p.id === 'pack_studio' && (p.credits < 1200 || (p.videoMinutes && p.videoMinutes < 120)))
+      );
+      if (hasOutdatedPacks) {
+        try {
+          await service.from('saas_settings').update({
+            pricing_packs: settings.pricingPacks as unknown as Json,
+            updated_at: new Date().toISOString(),
+          }).eq('id', 'global_config');
+        } catch (syncErr) {
+          console.warn('[DbManager.getSettings] Failed to sync updated packs to DB:', syncErr);
+        }
+      }
+      return settings;
+    }
     const payload: Database['public']['Tables']['saas_settings']['Insert'] = { id: 'global_config', welcome_credits: DEFAULT_SETTINGS.welcomeCredits, credits_per_scene: 1, enable_test_mode: false, enable_stripe: true, enable_razorpay: true, pricing_packs: DEFAULT_PACKS as unknown as Json };
     const { data: created, error: insertError } = await service.from('saas_settings').insert(payload).select('*').single();
     throwIfError(insertError);
