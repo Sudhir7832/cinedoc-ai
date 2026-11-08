@@ -29,9 +29,9 @@ type RawRpcClient = {
 };
 
 const DEFAULT_PACKS: PricingPack[] = [
-  { id: 'pack_creator', name: 'Creator', credits: 150, priceUsd: 5, priceInr: 499, videoMinutes: 15, description: 'For creators producing polished shorts and regular documentary episodes.', popular: false },
-  { id: 'pack_pro', name: 'Creator Pro', credits: 400, priceUsd: 19, priceInr: 1699, videoMinutes: 40, description: 'More production time for growing channels, campaigns, and client work.', popular: true },
-  { id: 'pack_studio', name: 'Studio', credits: 1000, priceUsd: 39, priceInr: 3499, videoMinutes: 100, description: 'High-volume production capacity for teams and documentary studios.', popular: false },
+  { id: 'pack_creator', name: 'Creator', credits: 300, priceUsd: 5, priceInr: 499, videoMinutes: 30, description: 'For creators producing polished shorts and regular documentary episodes.', popular: false },
+  { id: 'pack_pro', name: 'Creator Pro', credits: 600, priceUsd: 19, priceInr: 1699, videoMinutes: 60, description: 'More production time for growing channels, campaigns, and client work.', popular: true },
+  { id: 'pack_studio', name: 'Studio', credits: 1200, priceUsd: 39, priceInr: 3499, videoMinutes: 120, description: 'High-volume production capacity for teams and documentary studios.', popular: false },
 ];
 
 const DEFAULT_SETTINGS: SaasSettings = {

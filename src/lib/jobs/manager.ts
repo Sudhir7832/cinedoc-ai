@@ -88,8 +88,8 @@ export class JobManager {
     const contentStyle = input.contentStyle || 'documentary';
     const kidsFormat = contentStyle === 'kids' ? (input.kidsFormat || 'entertainment') : undefined;
     const aspectRatio = durationMinutes === 1 ? (input.aspectRatio || '16:9') : '16:9';
-    if (![1, 3, 5].includes(durationMinutes)) {
-      throw new Error('Duration must be 1, 3, or 5 minutes');
+    if (![1, 3, 5, 10, 15, 30].includes(durationMinutes)) {
+      throw new Error('Duration must be 1, 3, 5, 10, 15, or 30 minutes');
     }
 
     // Check for an identical running job from the same owner to prevent accidental duplicates

@@ -30,7 +30,14 @@ const editableSceneSchema = z.strictObject({
 export const createJobSchema = z.strictObject({
   topic: boundedString(300),
   customScript: z.string().trim().max(50_000).optional(),
-  durationMinutes: z.union([z.literal(1), z.literal(3), z.literal(5)]).optional().default(1),
+  durationMinutes: z.union([
+    z.literal(1),
+    z.literal(3),
+    z.literal(5),
+    z.literal(10),
+    z.literal(15),
+    z.literal(30),
+  ]).optional().default(1),
   language: videoLanguage.optional().default('Auto-Detect'),
   voice: z.string().trim().min(1).max(150).optional().default('alloy'),
   contentStyle: contentStyle.optional().default('documentary'),

@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { X, Sparkles, Clock, Globe, Image as ImageIcon, Film, Loader2, FileText, Wand2, Coins, Shapes, BookOpen, PartyPopper, Compass, MoonStar, Subtitles, EyeOff, RectangleHorizontal, Smartphone, Music2 } from 'lucide-react';
 
-import { ContentStyle, KidsFormat, SafeUser, VideoAspectRatio } from '@/lib/types';
+import { ContentStyle, KidsFormat, SafeUser, VideoAspectRatio, VideoDurationMinutes } from '@/lib/types';
 import { creditsForMinutes } from '@/lib/credits';
 
 interface CreateDocumentaryModalProps {
@@ -124,7 +124,7 @@ export const CreateDocumentaryModal: React.FC<CreateDocumentaryModalProps> = ({
   const [mode, setMode] = useState<'topic' | 'script'>('topic');
   const [topic, setTopic] = useState(initialTopic);
   const [customScript, setCustomScript] = useState('');
-  const [durationMinutes, setDurationMinutes] = useState<1 | 3 | 5>(1);
+  const [durationMinutes, setDurationMinutes] = useState<VideoDurationMinutes>(1);
   const [contentStyle, setContentStyle] = useState<ContentStyle>('documentary');
   const [kidsFormat, setKidsFormat] = useState<KidsFormat>('entertainment');
   const [includeSubtitles, setIncludeSubtitles] = useState(true);
@@ -441,8 +441,8 @@ export const CreateDocumentaryModal: React.FC<CreateDocumentaryModalProps> = ({
                 10 AI images per finished minute
               </span>
             </label>
-            <div className="grid grid-cols-3 gap-2 sm:gap-3">
-              {([1, 3, 5] as const).map((dur) => (
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+              {([1, 3, 5, 10, 15, 30] as const).map((dur) => (
                 <button
                   key={dur}
                   type="button"
@@ -450,18 +450,18 @@ export const CreateDocumentaryModal: React.FC<CreateDocumentaryModalProps> = ({
                     setDurationMinutes(dur);
                     if (dur !== 1) setAspectRatio('16:9');
                   }}
-                  className={`p-2 sm:p-3 rounded-xl border text-center transition flex flex-col items-center justify-center ${
+                  className={`p-2 rounded-xl border text-center transition flex flex-col items-center justify-center ${
                     durationMinutes === dur
                       ? 'bg-[var(--app-brand-soft)] border-[var(--app-brand)] shadow-sm'
                       : 'bg-[var(--app-surface)] border-theme text-secondary hover:bg-[var(--app-surface-soft)]'
                   }`}
                 >
-                  <span className="text-base font-extrabold text-primary">{dur} Min</span>
-                  <span className="mt-0.5 text-[11px] font-medium brand-text">
-                    {dur * 10} Scenes & Images
+                  <span className="text-sm sm:text-base font-extrabold text-primary">{dur}m</span>
+                  <span className="mt-0.5 text-[10px] font-medium brand-text">
+                    {dur * 10} scenes
                   </span>
-                  <span className="mt-0.5 text-[10px] text-secondary">
-                    ~{dur * 60}s video
+                  <span className="mt-0.5 text-[9px] text-secondary">
+                    {dur * 10} credits
                   </span>
                 </button>
               ))}

@@ -1163,7 +1163,7 @@ export function Dashboard({
       <section className="surface-card flex flex-col items-start justify-between gap-5 border-l-2 border-l-[var(--app-brand)] p-6 sm:flex-row sm:items-center sm:p-8">
         <div>
           <p className="eyebrow mb-1">Flexible production pricing</p>
-          <h2 className="editorial-title mt-2 text-2xl sm:text-3xl text-primary">150 production credits for $5 (₹499).</h2>
+          <h2 className="editorial-title mt-2 text-2xl sm:text-3xl text-primary">300 production credits (~30 min video) for $5 (₹499).</h2>
           <p className="mt-2 text-xs sm:text-sm text-secondary max-w-xl">
             Choose from Creator ($5), Creator Pro ($19), or Studio ($39). Includes animated videos, real footage, and high-quality voice cloning on Pro &amp; Studio plans. Pay via Cards or UPI in INR or USD.
           </p>

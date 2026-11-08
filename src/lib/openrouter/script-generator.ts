@@ -1,5 +1,5 @@
 import { OpenRouterClient } from './client';
-import { ContentStyle, KidsFormat, SceneItem, VideoAspectRatio } from '../types';
+import { ContentStyle, KidsFormat, SceneItem, VideoAspectRatio, VideoDurationMinutes } from '../types';
 
 const DOCUMENTARY_VISUAL_STYLE = 'cinematic documentary photograph, dramatic natural lighting, photorealistic, highly detailed, 8k';
 const KIDS_VISUAL_STYLES: Record<KidsFormat, string> = {
@@ -56,7 +56,7 @@ export class ScriptGenerator {
   public static async generateDocumentaryScript(params: {
     topic: string;
     customScript?: string;
-    durationMinutes: 1 | 3 | 5;
+    durationMinutes: VideoDurationMinutes;
     language?: string;
     contentStyle?: ContentStyle;
     kidsFormat?: KidsFormat;
@@ -228,7 +228,7 @@ DO NOT wrap with markdown code fences if possible, or use standard \`\`\`json. E
   public static parseCustomScript(params: {
     customScript: string;
     topic: string;
-    durationMinutes: 1 | 3 | 5;
+    durationMinutes: VideoDurationMinutes;
     language: string;
     contentStyle?: ContentStyle;
     kidsFormat?: KidsFormat;
@@ -330,7 +330,7 @@ DO NOT wrap with markdown code fences if possible, or use standard \`\`\`json. E
 
   public static generateProceduralScript(params: {
     topic: string;
-    durationMinutes: 1 | 3 | 5;
+    durationMinutes: VideoDurationMinutes;
     language?: string;
     contentStyle?: ContentStyle;
     kidsFormat?: KidsFormat;

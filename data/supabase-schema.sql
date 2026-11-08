@@ -260,7 +260,7 @@ drop policy if exists testimonials_public on public.testimonials;
 create policy testimonials_public on public.testimonials for select using (published or public.is_admin());
 
 insert into public.saas_settings (id, pricing_packs)
-values ('global_config', '[{"id":"pack_creator","name":"Creator","credits":150,"priceUsd":5,"priceInr":499,"videoMinutes":15,"description":"For creators producing polished shorts and regular documentary episodes.","popular":false},{"id":"pack_pro","name":"Creator Pro","credits":400,"priceUsd":19,"priceInr":1699,"videoMinutes":40,"description":"For growing channels, campaigns, and client work.","popular":true},{"id":"pack_studio","name":"Studio","credits":1000,"priceUsd":39,"priceInr":3499,"videoMinutes":100,"description":"High-volume capacity for production teams.","popular":false}]'::jsonb)
+values ('global_config', '[{"id":"pack_creator","name":"Creator","credits":300,"priceUsd":5,"priceInr":499,"videoMinutes":30,"description":"For creators producing polished shorts and regular documentary episodes.","popular":false},{"id":"pack_pro","name":"Creator Pro","credits":600,"priceUsd":19,"priceInr":1699,"videoMinutes":60,"description":"For growing channels, campaigns, and client work.","popular":true},{"id":"pack_studio","name":"Studio","credits":1200,"priceUsd":39,"priceInr":3499,"videoMinutes":120,"description":"High-volume capacity for production teams.","popular":false}]'::jsonb)
 on conflict (id) do nothing;
 
 create or replace function public.reserve_job_credits_v1(

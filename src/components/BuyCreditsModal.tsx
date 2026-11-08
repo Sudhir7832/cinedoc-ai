@@ -42,7 +42,7 @@ const PLAN_FEATURES: Record<string, { badge: string; items: { text: string; high
   pack_creator: {
     badge: 'Creator Starter',
     items: [
-      { text: '150 production credits (~15 min of 1080p video)' },
+      { text: '300 production credits (~30 min of 1080p video)' },
       { text: 'Full documentary & Kids video pipeline' },
       { text: 'Dual 16:9 catchy YouTube thumbnails' },
       { text: 'Cinematic Ken Burns camera motion' },
@@ -55,7 +55,7 @@ const PLAN_FEATURES: Record<string, { badge: string; items: { text: string; high
   pack_pro: {
     badge: 'Most Popular for Channels',
     items: [
-      { text: '400 production credits (~40 min of video)' },
+      { text: '600 production credits (~60 min / 1 hour of video)' },
       { text: 'Animated videos with character & kinetic motion', highlight: true },
       { text: 'Real footage & cinematic documentary visuals', highlight: true },
       { text: 'High quality custom voice cloning & neural speech', highlight: true },
@@ -68,7 +68,7 @@ const PLAN_FEATURES: Record<string, { badge: string; items: { text: string; high
   pack_studio: {
     badge: 'Best Value for Studios & Teams',
     items: [
-      { text: '1,000 production credits (~100 min of video)' },
+      { text: '1,200 production credits (~120 min / 2 hours of video)' },
       { text: 'Full animated videos suite & stylized animations', highlight: true },
       { text: 'Real footage documentary visual engine', highlight: true },
       { text: 'High quality custom voice cloning with emotion tuning', highlight: true },

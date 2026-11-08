@@ -55,11 +55,13 @@ export interface JobBillingSnapshot {
   releasedAt?: string;
 }
 
+export type VideoDurationMinutes = 1 | 3 | 5 | 10 | 15 | 30;
+
 export interface DocumentaryJob {
   id: string;
   topic: string;
   customScript?: string;
-  durationMinutes: 1 | 3 | 5;
+  durationMinutes: VideoDurationMinutes;
   contentStyle: ContentStyle;
   kidsFormat?: KidsFormat;
   includeSubtitles: boolean;
@@ -114,7 +116,7 @@ export interface DocumentaryJob {
 export interface CreateJobInput {
   topic: string;
   customScript?: string;
-  durationMinutes: 1 | 3 | 5;
+  durationMinutes: VideoDurationMinutes;
   contentStyle?: ContentStyle;
   kidsFormat?: KidsFormat;
   includeSubtitles?: boolean;
