@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, Clapperboard, HelpCircle, Mail, MessageSquare, ShieldCheck, Sparkles, Video } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUpRight, Clapperboard, HelpCircle, Mail } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { SupportCopyButton } from './SupportCopyButton';
 
@@ -25,24 +25,40 @@ export const metadata: Metadata = {
 
 const SUPPORT_CHANNELS = [
   {
-    icon: Video,
-    title: 'Video Production & Rendering',
-    desc: 'Assistance with 10-scene scriptwriting, visual regeneration, Ken Burns motion, subtitle burning, and 1080p MP4 master downloads.',
+    num: '01',
+    category: 'PRODUCTION & MASTER RENDERING',
+    title: 'Video Generation & Timeline Rendering',
+    desc: 'Assistance with 10-scene narrative scripts, per-scene visual image regenerations, Ken Burns motion pacing, burned-in subtitle timing, and 1080p MP4 master downloads.',
+    tags: ['Scene Re-rolls', '1080p Master MP4', 'Timeline Scene Swaps', 'Dual 16:9 YouTube Covers'],
+    subject: 'Support Query: Video Production & Rendering',
+    buttonLabel: 'Email Production Desk',
   },
   {
-    icon: MessageSquare,
-    title: 'Neural Voices & Audio Ducking',
-    desc: 'Help configuring Sarvam AI conversational Hindi, deep documentary English voiceover, and ducked ambient background score.',
+    num: '02',
+    category: 'NEURAL AUDIO & VOICES',
+    title: 'Voice Narration & Audio Ducking',
+    desc: 'Guidance on authentic Sarvam AI conversational Hindi, deep documentary English voiceover, automatic -18.5dB background music ducking, and subtitle timing.',
+    tags: ['Sarvam AI Hindi', 'Studio English', 'Ducked BGM (-18.5dB)', 'Karaoke Subtitles'],
+    subject: 'Support Query: Neural Voices & Narration',
+    buttonLabel: 'Email Audio Desk',
   },
   {
-    icon: ShieldCheck,
-    title: 'Billing, Invoices & Credits',
-    desc: 'Inquiries regarding Creator ($5), Pro ($19), Studio ($39) credit packs, Dodo Payments, and official tax invoice receipts.',
+    num: '03',
+    category: 'BILLING & INVOICES',
+    title: 'Credit Packs, Dodo Payments & Invoices',
+    desc: 'Inquiries regarding Creator ($5), Creator Pro ($19), and Studio ($39) credit balances, Dodo Payments checkout, card/UPI transactions, and official GST / VAT tax receipts.',
+    tags: ['Dodo Payments', 'GST Invoices', 'Credit Balance', 'One-Time Packs'],
+    subject: 'Support Query: Billing & Invoice Request',
+    buttonLabel: 'Email Billing Desk',
   },
   {
-    icon: Sparkles,
-    title: 'Commercial Rights & Monetization',
-    desc: 'Questions about YouTube AdSense monetization safety, Content ID clearance, dual 16:9 thumbnails, and brand sponsorship rights.',
+    num: '04',
+    category: 'MONETIZATION & RIGHTS',
+    title: 'Commercial Ownership & YouTube AdSense Safety',
+    desc: 'Guidance on YouTube AdSense monetization compliance, Content ID copyright clearance, dual 16:9 thumbnail A/B testing, and client broadcast licenses.',
+    tags: ['100% Commercial Rights', 'YouTube AdSense Safe', 'Zero Copyright Claims', 'Client Deliverables'],
+    subject: 'Support Query: Commercial Rights & Monetization',
+    buttonLabel: 'Email Rights Desk',
   },
 ];
 
@@ -87,13 +103,13 @@ export default function SupportPage() {
         {/* Hero Section */}
         <div className="text-center max-w-3xl mx-auto">
           <span className="brand-soft inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.12em]">
-            <HelpCircle className="h-3.5 w-3.5" /> Creator Support &amp; Assistance
+            <HelpCircle className="h-3.5 w-3.5" /> Creator Support &amp; Care
           </span>
           <h1 className="editorial-title mt-4 text-3xl sm:text-4xl lg:text-5xl text-primary font-normal leading-[1.08]">
             We&rsquo;re here to keep your productions moving.
           </h1>
           <p className="mt-4 text-sm sm:text-base leading-relaxed text-secondary">
-            Need technical help, custom niche pipelines, billing receipts, or voice configuration? For any queries write <span className="font-bold text-primary">support@kinesisflow.com</span> and our dedicated team will assist you.
+            Need technical help, custom niche pipelines, billing receipts, or voice configuration? For any queries write <span className="font-bold text-primary">support@kinesisflow.com</span> and our team will assist you.
           </p>
         </div>
 
@@ -102,23 +118,20 @@ export default function SupportPage() {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div className="space-y-2 max-w-xl">
               <div className="flex items-center gap-2">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl brand-soft brand-text">
-                  <Mail className="h-5 w-5" aria-hidden="true" />
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-secondary">
+                  Official Support Desk · support@kinesisflow.com
                 </span>
-                <div>
-                  <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-secondary">
-                    Official Support Desk
-                  </span>
-                  <p className="text-sm font-extrabold text-primary">Email Support</p>
-                </div>
               </div>
+              <h2 className="text-xl sm:text-2xl font-bold text-primary tracking-tight">
+                For any queries write support@kinesisflow.com
+              </h2>
               <p className="text-xs sm:text-sm text-secondary leading-relaxed pt-1">
-                For any queries write <strong className="text-primary font-semibold">support@kinesisflow.com</strong>. Include your registered account email and project ID if you have an active video in progress.
+                Whether you need help with video rendering, credit balance, Sarvam AI Hindi voiceovers, or official GST / business invoices, our team responds directly to your email. Include your registered account email and project ID if you have an active production in progress.
               </p>
               <div className="flex flex-wrap items-center gap-3 pt-2 text-[11px] text-secondary">
-                <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-semibold">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Support Team Online
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                  Support Active
                 </span>
                 <span>·</span>
                 <span>Average reply: &lt; 24 hours</span>
@@ -140,30 +153,61 @@ export default function SupportPage() {
           </div>
         </section>
 
-        {/* Support Categories Grid */}
+        {/* Support Channels Ledger - Unslop Editorial Broadsheet (Replaces AI-looking cards) */}
         <section aria-labelledby="support-topics-title">
-          <div className="mb-6">
-            <p className="eyebrow">Assistance Areas</p>
-            <h2 id="support-topics-title" className="editorial-title text-2xl sm:text-3xl text-primary">
-              What we can help you with
-            </h2>
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6">
+            <div>
+              <p className="eyebrow mb-1">Direct Assistance Directory</p>
+              <h2 id="support-topics-title" className="editorial-title text-2xl sm:text-3xl text-primary">
+                Specialized support desks
+              </h2>
+            </div>
+            <p className="text-xs text-secondary font-mono">
+              All inquiries forward to: <strong className="text-primary font-semibold">support@kinesisflow.com</strong>
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-            {SUPPORT_CHANNELS.map(channel => {
-              const Icon = channel.icon;
-              return (
-                <div key={channel.title} className="surface-soft border border-theme rounded-2xl p-5 sm:p-6 transition hover:border-[var(--app-brand)]/40">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-lg brand-soft brand-text">
-                      <Icon className="h-4 w-4" aria-hidden="true" />
+          <div className="surface-card border border-theme rounded-2xl sm:rounded-3xl divide-y divide-theme overflow-hidden shadow-sm">
+            {SUPPORT_CHANNELS.map((channel) => (
+              <div
+                key={channel.num}
+                className="p-6 sm:p-7 flex flex-col lg:flex-row lg:items-center justify-between gap-5 transition hover:bg-[var(--app-surface-soft)]/40"
+              >
+                <div className="flex items-start gap-4 sm:gap-5 max-w-2xl">
+                  <span className="font-mono text-xs font-extrabold brand-text shrink-0 pt-0.5 select-none">
+                    {channel.num}
+                  </span>
+                  <div>
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-secondary block">
+                      {channel.category}
                     </span>
-                    <h3 className="text-sm font-bold text-primary">{channel.title}</h3>
+                    <h3 className="text-base sm:text-lg font-bold text-primary mt-1 tracking-tight">
+                      {channel.title}
+                    </h3>
+                    <p className="mt-2 text-xs sm:text-sm text-secondary leading-relaxed">
+                      {channel.desc}
+                    </p>
+                    <div className="mt-3.5 flex flex-wrap items-center gap-1.5">
+                      {channel.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="rounded-md border border-theme/80 bg-[var(--app-surface-soft)] px-2.5 py-1 text-[11px] font-medium text-secondary"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                  <p className="mt-3 text-xs sm:text-sm leading-relaxed text-secondary">{channel.desc}</p>
                 </div>
-              );
-            })}
+
+                <a
+                  href={`mailto:support@kinesisflow.com?subject=${encodeURIComponent(channel.subject)}`}
+                  className="btn-secondary !text-xs shrink-0 self-start lg:self-center inline-flex items-center gap-1.5"
+                >
+                  {channel.buttonLabel} <ArrowUpRight className="h-3.5 w-3.5" />
+                </a>
+              </div>
+            ))}
           </div>
         </section>
 

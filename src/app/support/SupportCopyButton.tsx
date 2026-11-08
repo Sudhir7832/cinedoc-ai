@@ -48,3 +48,4 @@ export function SupportCopyButton({ email }: { email: string }) {
     </button>
   );
 }
+
